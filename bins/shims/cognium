@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BIN="$ROOT/node_modules/.bin/cognium"
+if [ ! -x "$BIN" ]; then echo "contained cognium missing: $BIN (install local npm dependencies; no global cognium fallback is allowed)" >&2; exit 127; fi
+export SECURITY_AGENT_HOME="${SECURITY_AGENT_HOME:-$ROOT}"
+export HOME="$ROOT/.local/home"
+export XDG_CACHE_HOME="$ROOT/.local/cache"
+export XDG_CONFIG_HOME="$ROOT/.local/config"
+export XDG_DATA_HOME="$ROOT/.local/share"
+export npm_config_cache="$ROOT/.local/cache/npm"
+exec "$BIN" "$@"

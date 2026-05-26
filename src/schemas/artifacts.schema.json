@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulnops.local/security-agent/artifacts.schema.json",
+  "title": "Security Agent MVP Artifact Schemas",
+  "$defs": {
+    "baseEnvelope": {
+      "type": "object",
+      "required": ["schema_version", "artifact_type", "repo_path", "repo_commit", "created_at", "generated_by", "provenance", "tool_runs", "confidence", "limitations"],
+      "properties": {
+        "schema_version": { "type": "string" },
+        "artifact_type": { "type": "string" },
+        "repo_path": { "type": "string" },
+        "repo_commit": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "generated_by": { "type": "string" },
+        "provenance": { "type": "array", "items": { "type": "object" } },
+        "tool_runs": { "type": "array", "items": { "$ref": "#/$defs/toolRunRecord" } },
+        "confidence": { "enum": ["high", "medium", "low", "imported"] },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "project": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "required": ["name"], "properties": { "name": { "type": "string" }, "initialized": { "type": "boolean" } } }] },
+    "tools": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "properties": { "ghost": { "type": "object", "required": ["enabled", "mode", "allow_live_validation", "allow_proxy"], "properties": { "enabled": { "type": "boolean" }, "mode": { "enum": ["import-only", "invoke-if-available", "disabled"] }, "allow_live_validation": { "const": false }, "allow_proxy": { "const": false } } } } }] },
+    "agents": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "properties": { "agents": { "type": "array", "items": { "type": "string" } } } }] },
+    "skills": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "properties": { "skills": { "type": "array", "items": { "type": "string" } } } }] },
+    "repoMap": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "required": ["files_count", "modules", "files"], "properties": { "files_count": { "type": "integer" }, "modules": { "type": "array" }, "files": { "type": "array" } } }] },
+    "languages": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "required": ["languages"], "properties": { "languages": { "type": "array", "items": { "type": "object", "required": ["language", "files_count"] } } } }] },
+    "dependencies": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "required": ["manifests", "dependencies"], "properties": { "manifests": { "type": "array" }, "dependencies": { "type": "array" }, "risky_packages": { "type": "array" } } }] },
+    "entrypoints": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "required": ["entrypoints"], "properties": { "entrypoints": { "type": "array" } } }] },
+    "callgraph": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "required": ["calls"], "properties": { "calls": { "type": "array" } } }] },
+    "dataflows": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "required": ["flows"], "properties": { "flows": { "type": "array" } } }] },
+    "ghostContext": { "type": "object", "required": ["imported", "imported_at"], "properties": { "imported": { "type": "boolean" }, "imported_at": { "type": "string" }, "source": { "type": "string" }, "original_file_path": { "type": "string" } } },
+    "finding": {
+      "type": "object",
+      "required": ["id", "title", "bug_class", "severity_claim", "confidence", "stage", "source_agent", "tool", "external_source", "external_status", "files", "entrypoint", "dataflow", "evidence", "reproduction_hint", "dedup_key", "limitations", "created_at", "repo_commit"],
+      "properties": {
+        "id": { "type": "string" },
+        "bug_class": { "enum": ["injection", "authz", "authn", "secrets", "crypto", "deserialization", "config", "dependency", "business_logic", "other"] },
+        "severity_claim": { "enum": ["critical", "high", "medium", "low", "info"] },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "stage": { "const": "discovery" },
+        "external_source": { "enum": ["ghost", "none", "other"] },
+        "external_status": { "enum": ["verified", "unverified", "rejected", "unknown", "none"] },
+        "files": { "type": "array", "items": { "type": "object", "required": ["path", "start_line", "end_line"] } },
+        "evidence": { "type": "array", "items": { "type": "object", "required": ["kind", "content", "provenance"] } }
+      }
+    },
+    "triagedFinding": { "allOf": [{ "$ref": "#/$defs/finding" }, { "required": ["triage"], "properties": { "triage": { "type": "object", "required": ["status", "final_severity", "priority", "reachability", "exploitability", "impact", "false_positive_risk", "votes", "ghost_reconciliation", "rationale", "required_human_checks", "next_stage_recommendation"] } } }] },
+    "toolRunRecord": { "type": "object", "required": ["id", "tool", "command", "start_time", "end_time", "exit_code", "stdout_path", "stderr_path", "output_artifact_path", "summarized_failure_reason", "repo_commit"] },
+    "harnessTask": { "type": "object", "required": ["id", "title", "stage", "status", "owner", "created_at", "updated_at", "evidence", "handoff"], "properties": { "status": { "enum": ["pending", "claimed", "done", "failed", "skipped"] } } },
+    "ghostImportLog": { "type": "object", "required": ["imported", "imported_at"], "properties": { "imported": { "type": "boolean" }, "scan_type": { "enum": ["code", "deps", "secrets"] } } },
+    "reportMetadata": { "allOf": [{ "$ref": "#/$defs/baseEnvelope" }, { "properties": { "reports": { "type": "array", "items": { "type": "string" } } } }] }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": "0.1.0",
+  "artifact_type": "security-agent-workflow-contract",
+  "strict_default": true,
+  "allow_degraded_flag": "--allow-degraded",
+  "stages": [
+    "init",
+    "doctor",
+    "recon",
+    "discovery",
+    "triage",
+    "rescore",
+    "report"
+  ],
+  "gates": [
+    "mcp-filesystem",
+    "ahk",
+    "mcp-codetree",
+    "mcp-gitnexus",
+    "tool-gitnexus",
+    "tool-semble",
+    "tool-opengrep",
+    "tool-cognium",
+    "ghost-repo-context",
+    "ghost-deps",
+    "ghost-secrets",
+    "ghost-scan-code",
+    "ghost-report"
+  ],
+  "authoritative_harness": "AHK SQLite .harness/harness.db",
+  "target_artifact_root": "${SECURITY_AGENT_HOME}/scans/<reponame>",
+  "portable_path_variables": [
+    "${SECURITY_AGENT_HOME}",
+    "${TARGET_REPO}"
+  ]
+}

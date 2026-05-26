@@ -1,0 +1,44 @@
+{
+  "run_id": "2026-05-12-ado-repo-scan-001",
+  "target": {
+    "type": "repo",
+    "ado": {
+      "organization": "your-org",
+      "project": "your-project",
+      "repository": "your-repo"
+    },
+    "revision": {
+      "type": "commit",
+      "value": "<commit-sha>"
+    },
+    "local_path": "/lab-data/repos/your-repo"
+  },
+  "profile": "standard",
+  "tools": {
+    "opengrep": true,
+    "codeql": true,
+    "osv_scanner": true,
+    "trivy_repo": true,
+    "syft_grype": false,
+    "modelscan": false,
+    "garak": true,
+    "promptfoo": true,
+    "pyrit": true
+  },
+  "policy": {
+    "fail_on": ["critical"],
+    "fail_on_high_without_exception": true
+  },
+  "outputs": {
+    "base_dir": "/lab-data/results/runs/2026-05-12-ado-repo-scan-001",
+    "publish_to_ado_artifacts": true,
+    "create_ado_work_items": true,
+    "post_pr_summary": false
+  },
+  "taxonomy": {
+    "map_cwe": true,
+    "map_owasp_llm_top10": true,
+    "map_mitre_atlas": true,
+    "compute_cvss": true
+  }
+}

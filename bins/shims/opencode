@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64) PLATFORM="darwin-arm64" ;;
+  Darwin-x86_64) PLATFORM="darwin-amd64" ;;
+  Linux-aarch64|Linux-arm64) PLATFORM="linux-arm64" ;;
+  Linux-x86_64) PLATFORM="linux-amd64" ;;
+  *) echo "unsupported platform for vendored opencode: $(uname -s)-$(uname -m)" >&2; exit 127 ;;
+esac
+BIN="$ROOT/bins/opencode/$PLATFORM/opencode"
+if [ ! -x "$BIN" ]; then
+  echo "vendored opencode missing or not executable: $BIN" >&2
+  exit 127
+fi
+export SECURITY_AGENT_HOME="${SECURITY_AGENT_HOME:-$ROOT}"
+export HOME="$ROOT/.local/home"
+export XDG_CACHE_HOME="$ROOT/.local/cache"
+export XDG_CONFIG_HOME="$ROOT/.local/config"
+export XDG_DATA_HOME="$ROOT/.local/share"
+export OPENCODE_CONFIG_DIR="$ROOT/.local/state/opencode"
+exec "$BIN" "$@"

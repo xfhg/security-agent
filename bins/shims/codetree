@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PY="$(ls -1d "$ROOT"/.local/python/cpython-*/bin/python3.12 2>/dev/null | head -1 || echo "")"
+if [ -z "$PY" ] || [ ! -x "$PY" ]; then echo "contained codetree runtime missing under $ROOT/.local/python/ (run: uv toolchain bootstrap)" >&2; exit 127; fi
+SITE="$ROOT/.local/venvs/codetree/lib/python3.12/site-packages"
+if [ ! -d "$SITE/codetree" ]; then echo "contained codetree package missing under $SITE (run: uv sync)" >&2; exit 127; fi
+export SECURITY_AGENT_HOME="${SECURITY_AGENT_HOME:-$ROOT}"
+export HOME="$ROOT/.local/home"
+export XDG_CACHE_HOME="$ROOT/.local/cache"
+export UV_CACHE_DIR="$ROOT/.local/cache/uv"
+export PYTHONNOUSERSITE=1
+export PYTHONPATH="$SITE${PYTHONPATH:+:$PYTHONPATH}"
+exec "$PY" -m codetree "$@"

@@ -1,0 +1,210 @@
+[
+  {
+    "slug": "target-workspace-init",
+    "title": "Initialize target security-agent workspace",
+    "description": "Create TARGET_REPO/.security-agent with config, target path contract, tool config, and task evidence before any recon or discovery work.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/config/target.json exists",
+      "TARGET_REPO/.security-agent/config/tools.json records Ghost enabled by default",
+      "TARGET_REPO/.security-agent/evidence/agent-harness-kit.json records AHK status"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "ghost-repo-context",
+    "title": "Run Ghost repo context against target",
+    "description": "Use the local ghost-repo-context skill against TARGET_REPO before native recon imports Ghost context.",
+    "acceptance": [
+      "Ghost repo context skill was invoked for TARGET_REPO, not SECURITY_AGENT_HOME",
+      "Generated or missing Ghost repo context is recorded under TARGET_REPO/.security-agent/kb/ghost-context.json",
+      "Ghost skills loaded from ghost/skills/plugins/ghost are recorded under TARGET_REPO/.security-agent/integrations/ghost/skills.json"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "recon-prepare-tools",
+    "title": "Run native recon with supporting tools",
+    "description": "Run recon with --prepare-tools so GitNexus, Semble, codeTree detection, repo map, dependencies, entrypoints, graph fallback, and threat model artifacts exist before source-level analysis.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/kb/supporting-tools.json exists",
+      "TARGET_REPO/.security-agent/kb/repo-map.json exists",
+      "TARGET_REPO/.security-agent/kb/entrypoints.json exists",
+      "TARGET_REPO/.security-agent/reports/recon.md exists"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "ghost-discovery-scans",
+    "title": "Run Ghost discovery scans against target",
+    "description": "Use local Ghost scan-deps, scan-secrets, and scan-code skills against TARGET_REPO before native discovery imports Ghost findings.",
+    "acceptance": [
+      "ghost-scan-deps was invoked for TARGET_REPO",
+      "ghost-scan-secrets was invoked for TARGET_REPO",
+      "ghost-scan-code was invoked for TARGET_REPO",
+      "No ghost-validate or ghost-proxy workflow was invoked"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "native-discovery-import",
+    "title": "Run native discovery and import Ghost evidence",
+    "description": "Run native discovery after Ghost scans so OpenGrep, focused agents, and Ghost normalized findings all land in canonical finding artifacts.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/findings/normalized/findings.json exists",
+      "TARGET_REPO/.security-agent/findings/normalized/ghost-code-findings.json exists",
+      "TARGET_REPO/.security-agent/findings/normalized/ghost-deps-findings.json exists",
+      "TARGET_REPO/.security-agent/findings/normalized/ghost-secrets-findings.json exists",
+      "TARGET_REPO/.security-agent/reports/discovery.md exists"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "triage-reconcile",
+    "title": "Run triage and reconcile native plus Ghost findings",
+    "description": "Run harsh native triage with dedup, reachability, exploitability, impact, false-positive challenge, severity panel, and Ghost reconciliation.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/findings/triaged/findings.json exists",
+      "Triaged findings include ghost_reconciliation fields",
+      "TARGET_REPO/.security-agent/reports/triage.md exists"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "ghost-and-mvp-report",
+    "title": "Generate final MVP and Ghost summaries",
+    "description": "Run report generation after triage and include Ghost evidence summary when present.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/reports/mvp-summary.md exists",
+      "TARGET_REPO/.security-agent/reports/ghost-summary.md exists or the report records no Ghost evidence",
+      "Final operator summary references artifacts, not bulk source context"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "tool-codetree-structure",
+    "title": "Run codeTree structural analysis",
+    "description": "Use codeTree MCP against TARGET_REPO before broad source reading so agents consume tree-sitter structure, symbols, imports, functions/classes, and route/controller shape as an intermediary artifact.",
+    "acceptance": [
+      "codeTree MCP was invoked against TARGET_REPO or a blocker was recorded",
+      "TARGET_REPO/.security-agent/evidence/graph/codetree-structure.json exists or the blocker explains why codeTree was unavailable",
+      "codeTree evidence paths are under TARGET_REPO, not SECURITY_AGENT_HOME"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "tool-gitnexus-recon",
+    "title": "Run GitNexus recon graph analysis",
+    "description": "Run GitNexus graph/index/query preparation against TARGET_REPO and preserve the graph evidence before discovery or triage.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/evidence/graph/gitnexus-analyze.json exists or a GitNexus blocker is recorded",
+      "TARGET_REPO/.security-agent/evidence/graph/gitnexus-query.json exists or a GitNexus blocker is recorded",
+      "TARGET_REPO/.security-agent/kb/supporting-tools.json records GitNexus status"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "tool-semble-retrieval",
+    "title": "Run Semble targeted retrieval",
+    "description": "Run Semble MCP/CLI targeted retrieval against TARGET_REPO for entrypoints, authz, data access, shell/file/crypto/secrets surfaces before source-level browsing.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/evidence/graph/semble-searches.json exists or a Semble blocker is recorded",
+      "Semble searches include entrypoint/authz/data-access/security-sink topics",
+      "TARGET_REPO/.security-agent/kb/supporting-tools.json records Semble status"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "tool-opengrep-sast",
+    "title": "Run OpenGrep SAST",
+    "description": "Run OpenGrep against TARGET_REPO and preserve raw JSON output before normalization and triage.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/findings/raw/opengrep.json exists",
+      "TARGET_REPO/.security-agent/evidence/tool-runs contains an OpenGrep tool-run record or raw artifact records OpenGrep unavailable",
+      "OpenGrep findings are normalized into TARGET_REPO/.security-agent/findings/normalized/findings.json when present"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "tool-cognium-semantic-sast",
+    "title": "Run Cognium security semantic SAST",
+    "description": "Run Cognium security-only semantic SAST against TARGET_REPO/src with tests excluded and preserve raw JSON before triage.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/findings/raw/semantic-sast.json exists",
+      "Cognium command uses --category security and --exclude-tests, or raw artifact records Cognium unavailable",
+      "Cognium exit code 1 is treated as findings-present rather than tool failure"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "ghost-repo-context-20260525",
+    "title": "Run Ghost repo context against target (2026-05-25 run)",
+    "description": "Use the local ghost-repo-context skill against TARGET_REPO to generate repo.md before native recon imports Ghost context.",
+    "acceptance": [
+      "ghost-repo-context produces repo.md artifact",
+      "repo.md is present under .security-agent/evidence/ghost/ or ghost output dir",
+      "repo context is imported into canonical workspace"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "ghost-discovery-scans-20260525",
+    "title": "Run Ghost discovery scans against target (2026-05-25 run)",
+    "description": "Use local Ghost scan-deps, scan-secrets, scan-code, and report skills against TARGET_REPO.",
+    "acceptance": [
+      "ghost-scan-deps produces findings artifact",
+      "ghost-scan-secrets produces findings artifact",
+      "ghost-scan-code produces findings artifact",
+      "ghost-report produces aggregated report"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "toolchain-containment-preflight",
+    "title": "Run contained toolchain preflight",
+    "description": "Verify all active workflow tools, Ghost binaries, MCP launchers, caches, and templates are contained under VulnOps before target analysis.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/evidence/containment-doctor.json exists",
+      "Ghost scanner binaries are checked under bins/ghost for macOS and Linux",
+      "OpenCode launcher is checked under bins/opencode for macOS and Linux",
+      "opencode.jsonc uses bins/shims launchers instead of bare package-runner or global tool commands",
+      "Ghost skill files do not reference global Ghost home paths",
+      "Scan-run artifacts are restricted to TARGET_REPO/.security-agent or /tmp"
+    ],
+    "status": "done"
+  },
+  {
+    "slug": "coverage-gates-strict",
+    "title": "Run strict mandatory coverage gates",
+    "description": "Run MCP, scanner, Ghost, and harness gates before recon; default complete scans fail as coverage_incomplete when a required gate is blocked.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/evidence/coverage-status.json exists",
+      "TARGET_REPO/.security-agent/evidence/tool-gates/summary.json exists",
+      "Each required gate has TARGET_REPO/.security-agent/evidence/tool-gates/<gate>.json",
+      "Default run stops before recon when required gates are blocked unless --allow-degraded is explicit"
+    ],
+    "status": "pending"
+  },
+  {
+    "slug": "toolchain-portability-verify",
+    "title": "Verify contained portable toolchain",
+    "description": "Generate toolchain.lock.json and identify not_portable_blocker entries for missing contained binaries or unredirectable state.",
+    "acceptance": [
+      "toolchain.lock.json exists",
+      "All required entries include path, checksum or not_portable_blocker",
+      "No required tool falls back to global PATH",
+      "security-agent toolchain verify reports portable true or explicit blockers"
+    ],
+    "status": "pending"
+  },
+  {
+    "slug": "sensitive-exposure-discovery",
+    "title": "Run generic sensitive exposure discovery",
+    "description": "Detect sensitive data leaks through logs, telemetry, debug output, error output, responses, and config dumps without steering to a single known finding.",
+    "acceptance": [
+      "TARGET_REPO/.security-agent/findings/raw/logging-exposure.json exists",
+      "Sensitive exposure findings normalize into findings/normalized/findings.json",
+      "Discovery report includes sensitive exposure coverage through source-agent counts"
+    ],
+    "status": "pending"
+  }
+]

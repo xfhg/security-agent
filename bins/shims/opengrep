@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BIN="$ROOT/bins/tools/opengrep"
+if [ ! -x "$BIN" ]; then echo "contained opengrep missing: $BIN" >&2; exit 127; fi
+export SECURITY_AGENT_HOME="${SECURITY_AGENT_HOME:-$ROOT}"
+export HOME="$ROOT/.local/home"
+export XDG_CACHE_HOME="$ROOT/.local/cache"
+exec "$BIN" "$@"

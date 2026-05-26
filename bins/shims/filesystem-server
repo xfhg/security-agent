@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BIN="$ROOT/node_modules/.bin/mcp-server-filesystem"
+JS="$ROOT/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js"
+export SECURITY_AGENT_HOME="${SECURITY_AGENT_HOME:-$ROOT}"
+export HOME="$ROOT/.local/home"
+export XDG_CACHE_HOME="$ROOT/.local/cache"
+export npm_config_cache="$ROOT/.local/cache/npm"
+if [ -x "$BIN" ]; then exec "$BIN" "$@"; fi
+if [ -f "$JS" ]; then exec node "$JS" "$@"; fi
+echo "contained @modelcontextprotocol/server-filesystem missing under node_modules" >&2
+exit 127

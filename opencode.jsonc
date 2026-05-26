@@ -1,0 +1,60 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "security-agent-lead",
+
+  "instructions": [
+    "AGENTS.md"
+  ],
+
+  "skills": {
+    "paths": [
+      ".opencode/skills",
+      "ghost/skills/plugins/ghost/skills/repo-context",
+      "ghost/skills/plugins/ghost/skills/scan-code",
+      "ghost/skills/plugins/ghost/skills/scan-deps",
+      "ghost/skills/plugins/ghost/skills/scan-secrets",
+      "ghost/skills/plugins/ghost/skills/report"
+    ]
+  },
+
+  "mcp": {
+    "gitnexus": {
+      "type": "local",
+      "command": ["bins/shims/gitnexus", "mcp"],
+      "enabled": true,
+      "timeout": 60000
+    },
+    "codetree": {
+      "type": "local",
+      "command": ["bins/shims/codetree", "--root", "targets"],
+      "enabled": true
+    },
+    "agent-harness-kit": {
+      "type": "local",
+      "command": ["bins/shims/ahk", "serve", "--port", "3742"],
+      "enabled": true
+    },
+    "filesystem_vulnops": {
+      "type": "local",
+      "command": [
+        "bins/shims/filesystem-server",
+        "."
+      ],
+      "enabled": true
+    }
+    
+  },
+
+  "watcher": {
+    "ignore": [
+      "node_modules/**",
+      ".git/**",
+      "scans/**",
+      ".local/**",
+      ".harness/**"
+    ]
+  },
+
+  "share": "manual",
+  "autoupdate": false
+}

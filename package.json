@@ -1,0 +1,24 @@
+{
+  "name": "vulnops-security-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "security-agent": "./src/cli.ts"
+  },
+  "scripts": {
+    "security-agent": "node --experimental-strip-types src/cli.ts",
+    "toolchain:verify": "node --experimental-strip-types src/cli.ts toolchain verify",
+    "toolchain:bundle": "node --experimental-strip-types src/cli.ts toolchain bundle",
+    "test": "node --test --experimental-strip-types tests/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@cardor/agent-harness-kit": "^1.2.3",
+    "@modelcontextprotocol/server-filesystem": "^2026.1.14",
+    "cognium": "^1.8.3",
+    "gitnexus": "^1.6.5"
+  }
+}

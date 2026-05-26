@@ -1,0 +1,36 @@
+# Scan output — never commit findings or evidence
+scans/
+
+# Target repos — cloned per deployment
+targets/
+
+# Dependencies — installed per machine
+node_modules/
+.opencode/node_modules/
+
+# Python runtimes — bootstrapped per machine
+.local/
+
+# codeTree index — built per target
+.codetree/
+
+# Harness database — local state only
+.harness/harness.db
+.harness/harness.db-shm
+.harness/harness.db-wal
+
+# Toolchain lock — regenerated per machine
+toolchain.lock.json
+
+# Deployment packages
+*.tar.gz
+
+# macOS
+.DS_Store
+
+# Large binaries — downloaded by scripts/bootstrap.sh
+bins/opencode/*/opencode
+bins/ghost/*/osv-scanner
+bins/ghost/*/poltergeist
+bins/ghost/*/wraith
+bins/tools/opengrep
