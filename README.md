@@ -60,6 +60,10 @@ scans/<reponame>/
 
 The entire pipeline runs without network access after a one-time bootstrap. See [`MULTIPLATFORM.md`](MULTIPLATFORM.md) for platform-specific setup and the offline tarball.
 
+## Next steps
+
+Integrate Strix and Buttercup
+
 ## v2 Roadmap
 
 PoC generation, live validation, traffic interception, patch generation, exploit replay, Ghost proxy, production target interaction.

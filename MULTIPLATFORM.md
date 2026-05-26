@@ -1,11 +1,20 @@
 # VulnOps v1.0.0 — Multi-Platform Deployment Guide
 
-## Tarballs
+## Building Tarballs
 
-| Tarball | Size | Use Case |
-|---------|------|----------|
-| `vulnops-linux-amd64.tar.gz` | ~181 MB | Linux x86_64 — needs npm install + Python bootstrap (requires network) |
-| `vulnops-offline-linux-amd64.tar.gz` | ~926 MB | Linux x86_64 — fully offline, zero network needed |
+Run this on any platform to produce both slim and offline tarballs:
+
+```bash
+bash scripts/package.sh
+```
+
+Output (in parent directory):
+| Tarball | Use Case |
+|---------|----------|
+| `vulnops-{platform}.tar.gz` | Slim — needs `scripts/bootstrap.sh` + npm install + Python bootstrap |
+| `vulnops-offline-{platform}.tar.gz` | Offline — zero network needed after extraction |
+
+The script auto-detects the current platform and excludes binaries for other architectures. Binaries are downloaded by `scripts/bootstrap.sh` from pinned versions in `config/versions.json`.
 
 ---
 
@@ -25,9 +34,7 @@ tar xzf vulnops-linux-amd64.tar.gz
 cd vulnops
 export SECURITY_AGENT_HOME="$PWD"
 
-# 2. Download platform binaries (OpenCode, Ghost tools, OpenGrep)
-#    These are excluded from git (too large for GitHub) and pinned at specific versions
-#    See config/versions.json for exact versions and URLs
+# 2. Download platform binaries
 bash scripts/bootstrap.sh
 
 # 3. Install npm dependencies
@@ -133,11 +140,7 @@ cp -r .local/python/cpython-py312/lib/python3.12/site-packages/codetree .local/v
 mkdir -p .local/venvs/semble/lib/python3.12/site-packages
 cp -r .local/python/cpython-py312/lib/python3.12/site-packages/semble .local/venvs/semble/lib/python3.12/site-packages/
 
-# 4. Install opengrep
-npm install -g @opengrep/cli 2>/dev/null || curl -sL "$(curl -sL https://api.github.com/repos/opengrep/opengrep/releases/tags/v1.22.0 | grep -o '"browser_download_url": *"[^"]*opengrep_manylinux_x86"' | head -1 | cut -d'"' -f4)" -o bins/tools/opengrep 2>/dev/null
-# Or install from Homebrew: brew install opengrep
-
-# 5. Verify
+# 5. Verify toolchain
 node --experimental-strip-types ./src/cli.ts toolchain verify
 
 # 6. Clone target and run
@@ -146,7 +149,7 @@ git clone <repo-url> targets/<reponame>
 bins/shims/opencode
 ```
 
-> **Note**: macOS development does not have an offline tarball. Use `npm install` and `pip install` with network access. The vendored binaries in `bins/opencode/darwin-arm64/` and `bins/ghost/darwin-arm64/` are included in the source repo.
+> **Note**: All platform binaries are downloaded by `scripts/bootstrap.sh` from pinned versions in `config/versions.json`. For offline deployment, run `scripts/package.sh` on the target machine to produce `vulnops-offline-{platform}.tar.gz`.
 
 ---
 
@@ -172,14 +175,14 @@ Operational logs are under `scans/<reponame>/workflow/`. Evidence and raw tool o
 
 | Tool | Linux x86_64 | macOS ARM | Offline |
 |------|-------------|-----------|---------|
-| OpenCode (agent TUI) | vendored in `bins/` | vendored | yes |
+| OpenCode | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes |
 | Cognium (SAST) | npm package | npm package | yes |
-| OpenGrep (SAST) | vendored binary | vendored | yes |
+| OpenGrep (SAST) | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes |
 | GitNexus (graph) | npm package | npm package | yes |
 | codetree (structure) | Python venv | Python venv | yes |
 | semble (retrieval) | Python venv | Python venv | yes |
-| wraith (SCA) | vendored binary | vendored | yes (with pre-downloaded DB) |
-| osv-scanner (SCA) | bundled with wraith | bundled | yes (with pre-downloaded DB) |
-| poltergeist (secrets) | vendored binary | vendored | yes |
+| wraith (SCA) | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes (with pre-downloaded DB) |
+| osv-scanner (SCA) | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes (with pre-downloaded DB) |
+| poltergeist (secrets) | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes |
 | AHK (harness) | npm package | npm package | yes |
 | filesystem-server (MCP) | npm package | npm package | yes |
