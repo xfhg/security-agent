@@ -54,10 +54,45 @@ build() {
   echo "  $(du -sh "$PARENT/$name" | cut -f1)"
 }
 
+build_offline() {
+  build "$1" 1
+}
+
 main() {
   detect_platform
+
+  # Download OSV vulnerability database for offline SCA capability
+  echo "Downloading OSV vulnerability database..."
+  WRAITH="$ROOT/bins/ghost/$PLATFORM/wraith"
+  if [ -x "$WRAITH" ]; then
+    "$WRAITH" download-db 2>&1 || echo "  (wraith download-db failed — SCA offline scans will be empty without it)"
+    echo "  -> OSV database cached."
+  else
+    echo "  wraith binary not found — skipping DB download"
+  fi
+
+  # Slim tarball (no node_modules, no .local, no OSV DB)
   build "vulnops-${PLATFORM}.tar.gz" 0
-  build "vulnops-offline-${PLATFORM}.tar.gz" 1
+
+  # Offline tarball: include OSV cache by copying into workspace
+  echo "Preparing OSV cache for offline tarball..."
+  OSV_CACHE_DIR="$ROOT/.local/osv-cache"
+  rm -rf "$OSV_CACHE_DIR"
+  mkdir -p "$OSV_CACHE_DIR"
+  for SRC in "$HOME/Library/Caches/osv-scanner" "$HOME/.cache/osv-scanner"; do
+    if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
+      cp -r "$SRC"/* "$OSV_CACHE_DIR/" 2>/dev/null || true
+      echo "  -> Copied OSV cache from $SRC"
+      break
+    fi
+  done
+  if [ -z "$(ls -A "$OSV_CACHE_DIR" 2>/dev/null)" ]; then
+    echo "  (OSV cache is empty — offline SCA will need network)"
+    touch "$OSV_CACHE_DIR/.keep"
+  fi
+
+  build_offline "vulnops-offline-${PLATFORM}.tar.gz"
+
   echo ""
   ls -lh "$PARENT"/vulnops*"$PLATFORM"*.tar.gz
 }

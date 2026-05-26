@@ -59,15 +59,43 @@ If no lockfiles found: write `{"lockfiles_found": 0, "lockfiles": []}`. Skip to 
 
 ## Step 3: Scan for Vulnerabilities
 
-For each lockfile, run wraith:
+For each lockfile, run wraith. Try online first, fall back to `--offline` if network is unavailable:
 
 ```bash
+# Try online (queries OSV.dev API — accurate, requires network)
 "$WRAPPER_BIN" scan --format json --output "<output_dir>/scan-<id>.json" "<repo_path>/<lockfile_path>"
+
+# If the above fails (network error), retry with offline flag (uses local OSV database)
+if [ $? -ne 0 ]; then
+  "$WRAPPER_BIN" scan --offline --format json --output "<output_dir>/scan-<id>.json" "<repo_path>/<lockfile_path>"
+  echo "OFFLINE_SCAN=true" >> "<output_dir>/scan-mode.txt"
+fi
 ```
 
 Exit codes 0 (no vulns) and 1 (vulns found) are both normal.
 
-Aggregate all scan results into `<output_dir>/candidates.json`. Read `<skill_dir>/agents/scan/agent.md` for the schema.
+## Step 3a: Scan Mode Awareness
+
+After scanning, check if offline mode was used and handle 0 findings appropriately:
+
+- **Online scan + 0 vulns**: repo has no known CVEs — valid result.
+- **Offline scan + 0 vulns**: SUSPICIOUS — may mean the OSV database was never downloaded rather than a clean scan. Write a warning in the findings:
+  ```json
+  { "offline_scan": true, "offline_db_available": <bool>, "note": "0 findings in offline mode may indicate missing OSV database" }
+  ```
+- **Offline scan + N vulns**: valid result, the offline DB was available.
+
+Detect offline mode and DB availability:
+```bash
+if [ -f "<output_dir>/scan-mode.txt" ] && grep -q "OFFLINE_SCAN=true" "<output_dir>/scan-mode.txt"; then
+  OFFLINE=true
+fi
+# Check if OSV DB exists
+OSV_CACHE="$HOME/Library/Caches/osv-scanner"
+[ -d "$OSV_CACHE" ] && [ "$(ls -A "$OSV_CACHE" 2>/dev/null)" ] && DB_AVAILABLE=true || DB_AVAILABLE=false
+```
+
+Aggregate all scan results into `<output_dir>/candidates.json`. Read `<skill_dir>/agents/scan/agent.md` for the schema. Include `offline_scan` and `offline_db_available` fields in the output.
 
 If no vulnerabilities found: write candidates.json with `candidates_created: 0`. Skip to Step 5.
 
