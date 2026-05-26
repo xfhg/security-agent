@@ -45,7 +45,7 @@ The only implemented stages are:
 - git read commands
 - OpenGrep CLI
 - RTK wrapper for noisy command output
-- `codetree` MCP for tree-sitter structure and symbol extraction — scoped to `targets/`. For deep-dive queries on symbols/files in the target repo, prepend `<reponame>/` to all file paths (e.g. `intercept/cmd/sarif.go`). Use during discovery and triage to verify reachability and call graphs. The CLI's `recon` stage also writes baseline artifacts to `scans/<repo>/evidence/graph/` — read those first.
+- `codetree` MCP for tree-sitter structure and symbol extraction — scoped to `targets/` (sees ALL repos under `targets/`). **Repo-wide queries** (`get_repository_map`, `search_graph`, `find_hot_paths`, `detect_clones`, `find_dead_code`) MUST read the CLI-produced artifacts from `scans/<repo>/evidence/graph/` — the CLI `recon` stage scopes codetree to TARGET_REPO exactly. **Deep-dive queries** (`get_symbol`, `get_call_graph`, `analyze_dataflow`, `find_references`, `get_file_skeleton`) on specific files/symbols may use the session MCP with the `<reponame>/` path prefix (e.g. `intercept/cmd/sarif.go`). Never call `get_repository_map` or `search_graph` via session MCP — these will see other repos.
 - Cognium CLI for semantic SAST using `cognium scan ./src --category security --exclude-tests`
 - optional Semble, GitNexus, Understand-Anything adapters
 - `agent-harness-kit` MCP for task ownership, action logs, acceptance tracking, and handoffs
@@ -89,10 +89,12 @@ Ghost defaults:
 
 ## Context Discipline
 - Do not read whole target source files into context during recon.
-- Use the CLI's `recon` stage to produce baseline codetree artifacts; during discovery and triage, use codetree MCP directly for deep-dive analysis on specific symbols/files (with `<reponame>/` path prefix).
+- Use the CLI's `recon` stage to produce baseline codetree artifacts; during discovery and triage, use codetree MCP **only** for deep-dive on specific symbols/files (with `<reponame>/` path prefix).
+- Never call `get_repository_map` or `search_graph` via session MCP — these scan all of `targets/`, not just TARGET_REPO. Read `scans/<repo>/evidence/graph/codetree-structure.json` instead.
 - GitNexus MCP can be used directly for graph/call-chain/execution-flow context during all phases.
 - Semble, GitNexus, and code graph CLI artifacts should be read from `scans/<repo>/evidence/graph/` as baseline; MCP tools supplement for deep-dive queries.
 - Never let codeTree scan the control repo as the analysis target; scope paths to explicit `TARGET_REPO` values, normally under `targets/<reponame>`.
+- **Target boundary**: TARGET_REPO is the ONLY repo being analyzed. Do not read files from other directories under `targets/`. Ghost skills must run against the explicit TARGET_REPO path, never default to `$(pwd)`.
 - Read targeted snippets only when a finding references a file and line.
 - Prefer `scans/<repo>/kb/repo-map.json`, `scans/<repo>/kb/entrypoints.json`, `scans/<repo>/kb/supporting-tools.json`, and `scans/<repo>/evidence/graph/*.json` over source browsing.
 

@@ -17,9 +17,11 @@ $ARGUMENTS
 
 ## Step 0: Setup
 
+Set `repo_path` to the target repository (use `${TARGET_REPO}` or the value passed via $ARGUMENTS). Never default to `$(pwd)`.
+
 Run this Bash command to compute paths:
 ```bash
-repo_name=$(basename "$(pwd)") && remote_url=$(git remote get-url origin 2>/dev/null || pwd) && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && short_sha=$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d) && ghost_repo_dir="$HOME/.ghost/repos/${repo_id}" && scans_dir="${ghost_repo_dir}/scans/${short_sha}" && cache_dir="${ghost_repo_dir}/cache" && skill_dir=$(find . -path '*/skills/report/SKILL.md' 2>/dev/null | head -1 | xargs dirname) && echo "scans_dir=$scans_dir cache_dir=$cache_dir skill_dir=$skill_dir"
+repo_path="<insert path, e.g. targets/intercept>" && cd "$repo_path" && repo_name=$(basename "$repo_path") && remote_url=$(git remote get-url origin 2>/dev/null || echo "$repo_path") && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && short_sha=$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d) && ghost_root="${SECURITY_AGENT_HOME}/.local/ghost" && ghost_repo_dir="${ghost_root}/repos/${repo_id}" && scans_dir="${ghost_repo_dir}/scans/${short_sha}" && cache_dir="${ghost_repo_dir}/cache" && skill_dir=$(find "${SECURITY_AGENT_HOME}" -path '*/skills/report/SKILL.md' 2>/dev/null | head -1 | xargs dirname) && echo "repo_path=$repo_path scans_dir=$scans_dir cache_dir=$cache_dir skill_dir=$skill_dir"
 ```
 
 Store `scans_dir` (commit-level scan directory), `cache_dir`, and `skill_dir`.

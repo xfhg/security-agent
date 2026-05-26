@@ -29,9 +29,11 @@ $ARGUMENTS
 
 ## Step 1: Setup
 
+Set `repo_path` to the target repository (use `${TARGET_REPO}` or the value passed via $ARGUMENTS). Never default to `$(pwd)`.
+
 Compute the repo-specific output directory:
 ```bash
-repo_name=$(basename "$(pwd)") && remote_url=$(git remote get-url origin 2>/dev/null || pwd) && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && short_sha=$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d) && ghost_repo_dir="$HOME/.ghost/repos/${repo_id}" && scan_dir="${ghost_repo_dir}/scans/${short_sha}/code" && cache_dir="${ghost_repo_dir}/cache" && mkdir -p "$scan_dir" && echo "scan_dir=$scan_dir cache_dir=$cache_dir"
+repo_path="<insert path, e.g. targets/intercept>" && cd "$repo_path" && repo_name=$(basename "$repo_path") && remote_url=$(git remote get-url origin 2>/dev/null || echo "$repo_path") && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && short_sha=$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d) && ghost_root="${SECURITY_AGENT_HOME}/.local/ghost" && ghost_repo_dir="${ghost_root}/repos/${repo_id}" && scan_dir="${ghost_repo_dir}/scans/${short_sha}/code" && cache_dir="${ghost_repo_dir}/cache" && mkdir -p "$scan_dir" && echo "repo_path=$repo_path scan_dir=$scan_dir cache_dir=$cache_dir"
 ```
 
 1. Read `$cache_dir/repo.md` — if missing, run the repo-context skill first and then continue.

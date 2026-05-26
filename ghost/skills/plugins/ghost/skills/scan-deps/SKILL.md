@@ -15,13 +15,13 @@ You execute all scanning steps directly without subagent spawning. Follow each s
 
 ## Defaults
 
-- **repo_path**: the current working directory
-- **scan_dir**: `~/.ghost/repos/<repo_id>/scans/<short_sha>/deps`
+- **repo_path**: the target repository path. Required — NEVER default to `$(pwd)`. When running via `/security-agent-run`, pass `TARGET_REPO` (typically `targets/<reponame>`).
+- **scan_dir**: `${SECURITY_AGENT_HOME}/.local/ghost/repos/<repo_id>/scans/<short_sha>/deps`
 - **short_sha**: `git rev-parse --short HEAD` (falls back to `YYYYMMDD` for non-git dirs)
 
 $ARGUMENTS
 
-Any values provided above override the defaults.
+Any values provided above override the defaults. If `repo_path` is not provided, set it to `${TARGET_REPO}`. If both are unavailable, report an error — do not scan the control repo.
 
 ---
 
@@ -30,7 +30,7 @@ Any values provided above override the defaults.
 Run this Bash command to compute paths and create output directories:
 
 ```
-repo_name=$(basename "$(pwd)") && remote_url=$(git remote get-url origin 2>/dev/null || pwd) && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && short_sha=$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d) && ghost_repo_dir="$HOME/.ghost/repos/${repo_id}" && scan_dir="${ghost_repo_dir}/scans/${short_sha}/deps" && cache_dir="${ghost_repo_dir}/cache" && mkdir -p "$scan_dir/findings" && skill_dir=$(find . -path '*skills/scan-deps/SKILL.md' 2>/dev/null | head -1 | xargs dirname) && echo "scan_dir=$scan_dir cache_dir=$cache_dir skill_dir=$skill_dir"
+repo_path="<insert path, e.g. targets/intercept>" && cd "$repo_path" && repo_name=$(basename "$repo_path") && remote_url=$(git remote get-url origin 2>/dev/null || echo "$repo_path") && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && short_sha=$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d) && ghost_root="${SECURITY_AGENT_HOME}/.local/ghost" && ghost_repo_dir="${ghost_root}/repos/${repo_id}" && scan_dir="${ghost_repo_dir}/scans/${short_sha}/deps" && cache_dir="${ghost_repo_dir}/cache" && mkdir -p "$scan_dir/findings" && skill_dir=$(find "${SECURITY_AGENT_HOME}" -path '*skills/scan-deps/SKILL.md' 2>/dev/null | head -1 | xargs dirname) && echo "repo_path=$repo_path scan_dir=$scan_dir cache_dir=$cache_dir skill_dir=$skill_dir"
 ```
 
 Store `scan_dir`, `cache_dir`, and `skill_dir`. Assign a scan timestamp: `SCAN_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)`.
@@ -42,13 +42,13 @@ Store `scan_dir`, `cache_dir`, and `skill_dir`. Assign a scan timestamp: `SCAN_T
 Install wraith if not already present:
 
 ```bash
-if [ ! -x ~/.ghost/bin/wraith ] && [ ! -x ~/.ghost/bin/wraith.exe ]; then
+if [ ! -x ${SECURITY_AGENT_HOME}/.local/ghost/bin/wraith ] && [ ! -x ${SECURITY_AGENT_HOME}/.local/ghost/bin/wraith.exe ]; then
   curl -sfL https://raw.githubusercontent.com/ghostsecurity/wraith/main/scripts/install.sh | bash
 fi
-SECURITY_AGENT_HOME="${SECURITY_AGENT_HOME:-$(pwd)}"
+SECURITY_AGENT_HOME="${SECURITY_AGENT_HOME:?SECURITY_AGENT_HOME must be set}"
 PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]') && ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
 WRAPPER="$SECURITY_AGENT_HOME/bins/ghost/${PLATFORM}-${ARCH}/wraith"
-if [ -x "$WRAPPER" ]; then WRAPPER_BIN="$WRAPPER"; else WRAPPER_BIN=~/.ghost/bin/wraith; fi
+if [ -x "$WRAPPER" ]; then WRAPPER_BIN="$WRAPPER"; else WRAPPER_BIN=${SECURITY_AGENT_HOME}/.local/ghost/bin/wraith; fi
 echo "WRAPPER_BIN=$WRAPPER_BIN"
 ```
 

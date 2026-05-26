@@ -14,15 +14,19 @@ You gather repository context by detecting projects, summarizing their architect
 ## Inputs
 
 Parse these from `$ARGUMENTS` (key=value pairs):
-- **repo_path**: path to the repository root
-- **cache_dir**: path to the cache directory (defaults to `~/.ghost/repos/<repo_id>/cache`)
+- **repo_path**: path to the repository root. **Required** — for workflow runs, pass `TARGET_REPO` (e.g. `targets/<reponame>`). Never default to `$(pwd)`.
+- **cache_dir**: path to the cache directory (defaults to `${SECURITY_AGENT_HOME}/.local/ghost/repos/<repo_id>/cache`)
 
 $ARGUMENTS
 
-If `cache_dir` is not provided, compute it:
+If `repo_path` is not provided in $ARGUMENTS, use `${TARGET_REPO}`. If neither is available, report an error.
+
+If `cache_dir` is not provided, compute it from `repo_path`:
 ```bash
-repo_name=$(basename "$(pwd)") && remote_url=$(git remote get-url origin 2>/dev/null || pwd) && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && cache_dir="$HOME/.ghost/repos/${repo_id}/cache" && echo "cache_dir=$cache_dir"
+repo_path="<insert path>" && cd "$repo_path" && repo_name=$(basename "$repo_path") && remote_url=$(git remote get-url origin 2>/dev/null || echo "$repo_path") && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && ghost_root="${SECURITY_AGENT_HOME}/.local/ghost" && cache_dir="${ghost_root}/repos/${repo_id}/cache" && echo "repo_path=$repo_path cache_dir=$cache_dir"
 ```
+
+Also compute `repo_path` from $ARGUMENTS if provided directly.
 
 ## Tool Restrictions
 
@@ -30,9 +34,11 @@ Do NOT use WebFetch or WebSearch. All work must use only local files in the repo
 
 ## Setup
 
+Set `repo_path` to the target repository (from $ARGUMENTS or `${TARGET_REPO}`). All file operations MUST use paths under `repo_path`.
+
 Discover this skill's own directory so you can reference agent files:
 ```bash
-skill_dir=$(find . -path '*/skills/repo-context/SKILL.md' 2>/dev/null | head -1 | xargs dirname)
+skill_dir=$(find "${SECURITY_AGENT_HOME}" -path '*/skills/repo-context/SKILL.md' 2>/dev/null | head -1 | xargs dirname)
 echo "skill_dir=$skill_dir"
 ```
 
