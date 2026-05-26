@@ -20,7 +20,7 @@ flowchart TD
   OCConfig --> AgentLead["Default agent: security-agent-lead"]
   OCConfig --> SkillMVP["Skill available: security-agent-mvp"]
   OCConfig --> Commands["Commands available: /security-agent-*"]
-  OCConfig --> MCPs["MCPs connected: agent-harness-kit, codetree, filesystem_vulnops, gitnexus, semble, global MCPs"]
+  OCConfig -->   MCPs["MCPs connected: agent-harness-kit, codetree (targets/), filesystem_vulnops, gitnexus, semble, global MCPs"]
 
   AgentLead --> RunCmd["/security-agent-run TARGET_REPO recon,discovery,triage"]
   SkillMVP --> RunCmd
@@ -142,7 +142,7 @@ flowchart TD
   GhostContext --> GhostContextArtifact["kb/ghost-context.json + integrations/ghost/skills.json"]
 
   ToolPrep --> GitNexusDetect["detect gitnexus"]
-  ToolPrep --> CodeTreeMCP["codeTree MCP: structure/symbols/imports scoped to TARGET_REPO"]
+  ToolPrep --> CodeTreeMCP["codeTree MCP: repo_map, search_graph, security symbols, skeletons, hot paths, dead code"]
   GitNexusDetect --> GitNexusAnalyze["gitnexus analyze --skip-agents-md --name security-agent-<hash> TARGET_REPO"]
   GitNexusAnalyze --> GitNexusAnalyzeArtifact["evidence/graph/gitnexus-analyze.json"]
   GitNexusAnalyze --> GitNexusQuery["gitnexus query -r alias --goal security entrypoints and flows"]
@@ -164,6 +164,10 @@ flowchart TD
   SembleArtifact --> SupportingTools
   CodeTreeMCP --> SupportingTools
   CodeTreeMCP --> CodeTreeArtifact["evidence/graph/codetree-structure.json or blocker"]
+  CodeTreeMCP --> CodeTreeSymbols["evidence/graph/codetree-security-symbols.json"]
+  CodeTreeMCP --> CodeTreeSkel["evidence/graph/codetree-skeletons.json"]
+  CodeTreeMCP --> CodeTreeHot["evidence/graph/codetree-hot-paths.json"]
+  CodeTreeMCP --> CodeTreeContext["evidence/graph/codetree-graph-context.json"]
   CodeTreeRecord --> SupportingTools
 
   SupportingTools --> Cartographer["repo-cartographer-agent"]
@@ -212,7 +216,7 @@ Recon supporting tools:
 
 - GitNexus: graph/index and security-focused query evidence
 - Semble: local retrieval searches
-- codeTree: MCP-first structural context for symbols/functions/classes/imports/routes, scoped to `TARGET_REPO`; CLI detection remains fallback
+- codeTree: MCP-first structural context for symbols/functions/classes/imports/routes, plus security symbol scans, entrypoint skeletons, hot-path analysis, and dead/clone detection scoped to `TARGET_REPO`; CLI detection remains fallback. Session MCP (scoped to `targets/`) usable for deep-dive with `<reponame>/` path prefix.
 - Ghost: active safe skills run before recon in `/security-agent-run`; recon imports their context artifacts
 - RTK: operator-facing command-output reduction, not part of internal CLI execution
 
@@ -230,6 +234,10 @@ Recon artifacts available to later phases:
 - `kb/ghost-context.json`
 - `integrations/ghost/skills.json`
 - `evidence/graph/codetree-structure.json`
+- `evidence/graph/codetree-security-symbols.json`
+- `evidence/graph/codetree-skeletons.json`
+- `evidence/graph/codetree-hot-paths.json`
+- `evidence/graph/codetree-graph-context.json`
 - `evidence/graph/gitnexus-analyze.json`
 - `evidence/graph/gitnexus-query.json`
 - `evidence/graph/semble-searches.json`
@@ -333,7 +341,7 @@ flowchart TD
   LoadFindings --> Dedup["dedup-agent"]
   Dedup --> Deduped["Deduplicated finding set"]
 
-  Deduped --> Reachability["reachability-agent"]
+  Deduped --> Reachability["reachability-agent (reads codetree security symbols, hot paths, entrypoint skeletons)"]
   LoadEntrypoints --> Reachability
   LoadRecon --> Reachability
   Reachability --> ReachabilityScore["reachability: confirmed | likely | possible | unlikely | unknown"]
@@ -383,6 +391,9 @@ Triage supporting tools:
   - `kb/callgraph.json`
   - `kb/dataflows.json`
   - `kb/supporting-tools.json`
+  - `evidence/graph/codetree-security-symbols.json`
+  - `evidence/graph/codetree-skeletons.json`
+  - `evidence/graph/codetree-hot-paths.json`
   - `evidence/graph/gitnexus-query.json`
   - `evidence/graph/semble-searches.json`
   - `findings/normalized/findings.json`
@@ -450,8 +461,13 @@ flowchart LR
   Recon --> B5["kb/callgraph.json"]
   Recon --> B6["kb/dataflows.json"]
   Recon --> B7["kb/threat-model.md"]
-  Recon --> B8["evidence/graph/gitnexus-query.json"]
-  Recon --> B9["evidence/graph/semble-searches.json"]
+  Recon --> B8["evidence/graph/codetree-structure.json"]
+  Recon --> B9["evidence/graph/codetree-security-symbols.json"]
+  Recon --> B10["evidence/graph/codetree-skeletons.json"]
+  Recon --> B11["evidence/graph/codetree-hot-paths.json"]
+  Recon --> B12["evidence/graph/codetree-graph-context.json"]
+  Recon --> B13["evidence/graph/gitnexus-query.json"]
+  Recon --> B14["evidence/graph/semble-searches.json"]
 
   Discovery["Discovery"] --> C1["findings/raw/*.json"]
   Discovery --> C2["findings/normalized/findings.json"]
@@ -482,7 +498,7 @@ flowchart LR
 | Recon prep | graph/recon tools | `gitnexus analyze` | `evidence/graph/gitnexus-analyze.json` | recon, triage context |
 | Recon prep | graph/recon tools | `gitnexus query` | `evidence/graph/gitnexus-query.json` | recon, triage context |
 | Recon prep | graph/recon tools | `bins/shims/semble search` | `evidence/graph/semble-searches.json` | recon, discovery, triage context |
-| Recon prep | graph/recon tools | codeTree MCP JSON-RPC initialize and repo-map/graph calls | `evidence/graph/codetree-structure.json`, `kb/supporting-tools.json` | recon, discovery, triage context |
+| Recon prep | graph/recon tools | codeTree MCP JSON-RPC: repo-map, search_graph, security symbols, entrypoint skeletons, hot paths, dead code, clones | `evidence/graph/codetree-structure.json`, `evidence/graph/codetree-security-symbols.json`, `evidence/graph/codetree-skeletons.json`, `evidence/graph/codetree-hot-paths.json`, `evidence/graph/codetree-graph-context.json`, `kb/supporting-tools.json` | recon, discovery, triage context |
 | Recon | `repo-cartographer-agent` | filesystem scan | `kb/repo-map.json`, `kb/languages.json` | discovery, triage |
 | Recon | `dependency-agent` | manifest parsing | `kb/dependencies.json` | dependency-risk discovery |
 | Recon | `entrypoint-agent` | pattern scan | `kb/entrypoints.json` | discovery, reachability triage |
@@ -493,13 +509,13 @@ flowchart LR
 | Discovery | focused agents | local heuristics | `findings/raw/*.json` | normalization, triage |
 | Discovery | `ghost-finding-import-agent` default | Ghost import of previously generated scans | `findings/normalized/ghost-*.json` | dedup, reconciliation |
 | Triage | `dedup-agent` | no external tool | deduped in memory | all triage agents |
-| Triage | `reachability-agent` | reads KB artifacts | triage fields | severity panel |
+| Triage | `reachability-agent` | reads KB artifacts + codetree security symbols, hot paths, entrypoint skeletons | triage fields | severity panel |
 | Triage | `exploitability-agent` | reads finding evidence | triage fields | severity panel |
 | Triage | `impact-agent` | reads finding class/evidence | triage fields | severity panel |
 | Triage | `false-positive-agent` | reads finding paths/evidence | triage fields | severity panel |
 | Triage | `severity-panel-agent` | deterministic vote logic | triage votes/status | report |
 | Triage | `ghost-status-reconciliation-agent` | reads external status | triage ghost notes | report |
-| Rescore (auto) | `rescore-agent` | reads triaged findings + KB artifacts | `review/rescore-report.md`, updated triage scores | report |
+| Rescore (auto) | `rescore-agent` | reads triaged findings + KB artifacts + codetree hot paths, security symbols, entrypoint skeletons | `review/rescore-report.md`, updated triage scores | report |
 | Report | `report-agent` | reads triaged findings | `security/executive-summary.md`, `security/detailed-report.md`, `security/ghost-findings.md` | operator decision |
 
 ## 10. Troubleshooting Checkpoints

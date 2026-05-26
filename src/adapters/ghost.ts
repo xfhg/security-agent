@@ -120,7 +120,7 @@ export async function importGhostFindings(repo: string, scanType: GhostScanType)
     ...(await importLocalGhostMarkdown(repo, scanType))
   ];
 
-  await writeJson(outPath, findings);
+  if (findings.length > 0) await writeJson(outPath, findings);
   await writeJson(logPath, {
     imported: findings.length > 0,
     reason: findings.length > 0 ? null : "No local Ghost evidence found under evidence/ghost or integrations/ghost",

@@ -87,13 +87,13 @@ Filesystem boundary:
    node --experimental-strip-types ./src/cli.ts recon --repo "$TARGET_REPO" --prepare-tools
    ```
 
-   Supporting tool behavior:
-    - codeTree is started by the CLI recon stage with `--root TARGET_REPO` (not called directly from the OpenCode session). The session's codeTree MCP server is scoped to `SECURITY_AGENT_HOME`; agents must read `scans/<reponame>/evidence/graph/codetree-structure.json` instead of calling codeTree tools directly.
-    - GitNexus indexes the target and runs a security-focused graph query.
-   - Semble runs focused retrieval searches for entrypoints, authz, data access, shell/file/crypto/secret surfaces.
-   - CLI codeTree detection remains a fallback artifact when MCP structure is unavailable.
-   - Supporting tools are time-budgeted, but complete scans require gate success before this phase.
-   - Ghost repo context generated in the prior OpenCode step is imported by default.
+    Supporting tool behavior:
+     - codeTree is started by the CLI recon stage with `--root TARGET_REPO` and writes baseline structure, security symbol scans, entrypoint skeletons, hot-path analysis, and dead/clone detection under `evidence/graph/`. The session codetree MCP (scoped to `targets/`) can also be used for deep-dive queries on specific symbols/files during discovery and triage, with the `<reponame>/` path prefix.
+     - GitNexus indexes the target and runs a security-focused graph query.
+    - Semble runs focused retrieval searches for entrypoints, authz, data access, shell/file/crypto/secret surfaces.
+    - CLI codeTree detection remains a fallback artifact when MCP structure is unavailable.
+    - Supporting tools are time-budgeted, but complete scans require gate success before this phase.
+    - Ghost repo context generated in the prior OpenCode step is imported by default.
 
    Harness-gated intermediary artifacts:
    - codeTree: `scans/<reponame>/evidence/graph/codetree-structure.json` or blocker.
@@ -101,24 +101,29 @@ Filesystem boundary:
    - Semble: `scans/<reponame>/evidence/graph/semble-searches.json` or blocker.
 
    Outputs:
-   - `scans/<reponame>/kb/supporting-tools.json`
-   - `scans/<reponame>/evidence/graph/gitnexus-analyze.json`
-   - `scans/<reponame>/evidence/graph/gitnexus-query.json`
-   - `scans/<reponame>/evidence/graph/semble-searches.json`
+    - `scans/<reponame>/kb/supporting-tools.json`
+    - `scans/<reponame>/evidence/graph/gitnexus-analyze.json`
+    - `scans/<reponame>/evidence/graph/gitnexus-query.json`
+    - `scans/<reponame>/evidence/graph/semble-searches.json`
+    - `scans/<reponame>/evidence/graph/codetree-structure.json`
+    - `scans/<reponame>/evidence/graph/codetree-security-symbols.json`
+    - `scans/<reponame>/evidence/graph/codetree-skeletons.json`
+    - `scans/<reponame>/evidence/graph/codetree-hot-paths.json`
+    - `scans/<reponame>/evidence/graph/codetree-graph-context.json`
 
 7. Recon builds the canonical knowledge base.
 
    Outputs:
-   - `scans/<reponame>/kb/repo-map.json`
-   - `scans/<reponame>/kb/languages.json`
-   - `scans/<reponame>/kb/dependencies.json`
-   - `scans/<reponame>/kb/entrypoints.json`
-   - `scans/<reponame>/kb/callgraph.json`
-   - `scans/<reponame>/kb/dataflows.json`
-   - `scans/<reponame>/kb/threat-model.md`
-   - `scans/<reponame>/kb/ghost-context.json`
-   - `scans/<reponame>/integrations/ghost/skills.json`
-   - `scans/<reponame>/workflow/recon-summary.md`
+    - `scans/<reponame>/kb/repo-map.json`
+    - `scans/<reponame>/kb/languages.json`
+    - `scans/<reponame>/kb/dependencies.json`
+    - `scans/<reponame>/kb/entrypoints.json`
+    - `scans/<reponame>/kb/callgraph.json`
+    - `scans/<reponame>/kb/dataflows.json`
+    - `scans/<reponame>/kb/threat-model.md`
+    - `scans/<reponame>/kb/ghost-context.json`
+    - `scans/<reponame>/integrations/ghost/skills.json`
+    - `scans/<reponame>/workflow/recon-summary.md`
 
 8. Discovery reads KB artifacts and tool evidence, then scans.
 
@@ -154,13 +159,15 @@ Filesystem boundary:
 
 10. Rescore auto-runs after triage to re-evaluate needs-human-review findings.
 
-   The rescore stage applies richer KB context to findings the primary triage couldn't resolve:
-   - Ghost-verified findings are accepted at claimed severity
-   - Scanner noise is rejected
-   - Test/example/doc path findings without evidence are rejected
-   - Same-directory entrypoint proximity upgrades reachability
-   - Dependency findings with CVE/GHSA evidence are accepted
-   - Secrets in production code paths are accepted
+    The rescore stage applies richer KB context to findings the primary triage couldn't resolve:
+    - Ghost-verified findings are accepted at claimed severity
+    - Scanner noise is rejected
+    - Test/example/doc path findings without evidence are rejected
+    - Codetree-confirmed hot-path or entrypoint skeleton findings are accepted
+    - Same-file entrypoint proximity is accepted
+    - Dependency findings with CVE/GHSA evidence are accepted
+    - Secrets in production code paths are accepted
+    - Codetree security symbol category match findings are accepted
 
    Outputs:
    - `scans/<reponame>/review/rescore-report.md`
@@ -181,7 +188,7 @@ Filesystem boundary:
 Agents may read:
 - `config/target.json`
 - `kb/*.json`
-- `evidence/graph/*.json`
+- `evidence/graph/*.json` (codetree structure, security symbols, skeletons, hot paths; gitnexus; semble)
 - `findings/normalized/findings.json`
 - `findings/triaged/findings.json`
 - `security/*.md`
