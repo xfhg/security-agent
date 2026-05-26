@@ -16,8 +16,9 @@ Path contract:
 - `SECURITY_AGENT_HOME` is this repository root (`${SECURITY_AGENT_HOME}` at runtime).
 - `TARGET_REPO` is the repository being analyzed and must be passed explicitly to every `security-agent` command.
 - OpenCode starts in `SECURITY_AGENT_HOME`; the CLI writes artifacts under `scans/<reponame>/` (never inside the target repo).
-- MCP tools rooted at `SECURITY_AGENT_HOME`, including `codetree`, see this control repo. **Do not call codeTree MCP directly from the OpenCode session.** The session server is scoped to `SECURITY_AGENT_HOME`, not `TARGET_REPO`. The CLI's `recon` stage starts codeTree with `--root TARGET_REPO` and writes `scans/<reponame>/evidence/graph/codetree-structure.json`. Read that artifact instead.
-- Scope GitNexus and Semble work to `TARGET_REPO` paths via the CLI recon stage; read results from `scans/<reponame>/evidence/graph/`.
+- MCP tools rooted at `SECURITY_AGENT_HOME`. The `codetree` MCP is scoped to `targets/` — it CAN see target repos under `targets/<reponame>/`. To use codetree MCP directly, prefix all file paths with `<reponame>/` (e.g. `intercept/cmd/sarif.go` instead of `cmd/sarif.go`). The CLI's `recon` stage also starts codeTree with `--root TARGET_REPO` and writes `scans/<reponame>/evidence/graph/codetree-structure.json`. Read that baseline artifact first, then use codetree MCP for deep-dive queries on specific files/symbols during discovery and triage.
+- Use GitNexus MCP for graph/call-chain/execution-flow context during all phases.
+- Scope Semble work to `TARGET_REPO` paths via the CLI recon stage; read results from `scans/<reponame>/evidence/graph/`.
 - Do not read or import from the global Ghost home or any path outside `SECURITY_AGENT_HOME`, except `/tmp` fixtures. Ghost evidence must be local target evidence under `scans/<reponame>/evidence/ghost/`.
 - Use contained launchers from `bins/shims/*`; do not call package runners or globally installed scanner/graph tools directly.
 - Run `security-agent doctor --repo <target>` before relying on Ghost or external-tool evidence.
@@ -67,7 +68,8 @@ Harness is mandatory:
 - after verifying each acceptance criterion, call `tasks.acceptance.update(criterionId)`; `tasks.update(taskId, 'done')` without acceptance updates is not sufficient
 
 Recon tool order:
-- the CLI's `recon` stage starts codeTree with `--root TARGET_REPO` and writes `scans/<reponame>/evidence/graph/codetree-structure.json` — read that artifact, never call codeTree MCP directly from the session.
+- the CLI's `recon` stage starts codeTree with `--root TARGET_REPO` and writes `scans/<reponame>/evidence/graph/codetree-structure.json` — read that baseline artifact first.
+- use codetree MCP for deep-dive queries on specific files/symbols during discovery and triage (prepend `<reponame>/` to all file paths)
 - use GitNexus MCP for graph/call-chain/execution-flow context
 - use Semble MCP for targeted retrieval
 - only then read targeted source snippets referenced by artifacts

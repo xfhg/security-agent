@@ -21,8 +21,10 @@ export async function triageStage(repo: string, options: { importGhostFindings?:
     findings = [...findings, ...await importGhostFindings(repo, "code"), ...await importGhostFindings(repo, "deps"), ...await importGhostFindings(repo, "secrets")];
   }
   const entrypoints = await readJson<any>(agentPath(repo, "kb", "entrypoints.json"), { entrypoints: [] });
-  const triaged = deduplicateFindings(findings).map((finding): TriagedFinding => {
-    const reach = assessReachability(finding, entrypoints);
+  const triaged: TriagedFinding[] = [];
+  const deduped = deduplicateFindings(findings);
+  for (const finding of deduped) {
+    const reach = await assessReachability(finding, entrypoints, repo);
     const exploit = assessExploitability(finding);
     const impact = assessImpact(finding);
     const fp = challengeFinding(finding);
@@ -30,7 +32,7 @@ export async function triageStage(repo: string, options: { importGhostFindings?:
     let status = statusFromVotes(votes);
     if (finding.external_source === "ghost" && finding.external_status === "verified" && reach.reachability === "unknown") status = "needs-human-review";
     const priority = status === "accepted" ? priorityFor(finding, reach.reachability, exploit.exploitability, impact.impact) : status === "needs-human-review" ? "P3" : "P4";
-    return {
+    triaged.push({
       ...finding,
       triage: {
         status,
@@ -46,8 +48,8 @@ export async function triageStage(repo: string, options: { importGhostFindings?:
         required_human_checks: humanChecks(finding, reach.reachability, fp.notes),
         next_stage_recommendation: status === "accepted" ? "prove" : status === "rejected" ? "ignore" : "manual-review"
       }
-    };
-  });
+    });
+  }
   await writeJson(agentPath(repo, "findings", "triaged", "findings.json"), triaged);
   await writeFile(agentPath(repo, "security", "triage-report.md"), renderTriage(triaged, await readCoverageStatus(repo), await readCoverageGates(repo), repo), "utf8");
 }

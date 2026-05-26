@@ -2,7 +2,7 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { agentPath, binPath, exists } from "../core/paths.ts";
 import { stableHash } from "../core/provenance.ts";
-import { writeJson } from "../core/artifact-writer.ts";
+import { writeJson, readJson } from "../core/artifact-writer.ts";
 import { detectCommand, runTool } from "./tool-runner.ts";
 import { callMcpTool, probeMcpInitialize } from "./mcp-probe.ts";
 import { detectCodeTree } from "./codetree.ts";
@@ -34,6 +34,20 @@ async function prepareCodeTree(repo: string) {
   }
   const repoMap = await callMcpTool(command, repo, "get_repository_map", { max_items: 20 }, 20_000);
   const search = await callMcpTool(command, repo, "search_graph", { limit: 50 }, 20_000);
+
+  const securitySymbolsPatterns = [
+    { label: "crypto", query: "encrypt decrypt hash sign signkey privatekey cipher md5 sha1 des rc4 3des", min_complexity: 1 },
+    { label: "injection", query: "exec command shell system spawn runCommand eval", min_complexity: 1 },
+    { label: "authz_authn", query: "auth authenticate authorize permission role policy guard middleware", min_complexity: 1 },
+    { label: "deserialization", query: "deserialize unmarshal parse decode yaml xml json marshal", min_complexity: 1 }
+  ];
+  const securitySymbols: Record<string, unknown> = {};
+  for (const p of securitySymbolsPatterns) {
+    const result = await callMcpTool(command, repo, "search_symbols", { query: p.query, min_complexity: p.min_complexity, limit: 60 }, 15_000);
+    securitySymbols[p.label] = extractMcpResult(result);
+  }
+  await writeJson(agentPath(repo, "evidence", "graph", "codetree-security-symbols.json"), securitySymbols);
+
   const structure = {
     available: true,
     prepared: repoMap.ok || search.ok,
@@ -46,11 +60,66 @@ async function prepareCodeTree(repo: string) {
     },
     repository_map: extractMcpResult(repoMap),
     graph_search: extractMcpResult(search),
+    security_symbols: Object.keys(securitySymbols).some((k) => {
+      const r = securitySymbols[k] as any;
+      return r?.ok;
+    }) ? "evidence/graph/codetree-security-symbols.json" : null,
     limitations: repoMap.ok || search.ok ? [] : ["codeTree initialized but graph extraction tool calls failed"],
     artifact: "evidence/graph/codetree-structure.json"
   };
   await writeJson(artifact, structure);
   return structure;
+}
+
+export async function prepareGraphContext(repo: string): Promise<void> {
+  const capability = await detectCodeTree();
+  if (!capability.available) {
+    await writeJson(agentPath(repo, "evidence", "graph", "codetree-graph-context.json"), { available: false, reason: capability.reason ?? "codeTree unavailable" });
+    return;
+  }
+  const entrypoints = await (async () => {
+    try { return await readJson<any>(agentPath(repo, "kb", "entrypoints.json"), { entrypoints: [] }); }
+    catch { return { entrypoints: [] }; }
+  })();
+  const entrypointFiles = [...new Set<string>((entrypoints.entrypoints ?? []).map((ep: any) => ep.path ?? ep.file).filter(Boolean))];
+  const command = [binPath("shims", "codetree"), "--root", repo];
+
+  const skeletons: Record<string, unknown> = {};
+  let skeletonsOk = false;
+  if (entrypointFiles.length > 0) {
+    const result = await callMcpTool(command, repo, "get_skeletons", { file_paths: entrypointFiles.slice(0, 10), format: "compact" }, 20_000);
+    skeletonsOk = result.ok;
+    if (result.ok) skeletons["entrypoints"] = extractMcpResult(result);
+  }
+  await writeJson(agentPath(repo, "evidence", "graph", "codetree-skeletons.json"), { available: true, skeletons_ok: skeletonsOk, entrypoint_files: entrypointFiles, skeletons });
+
+  let hotPathsOk = false;
+  const hotPaths = await callMcpTool(command, repo, "find_hot_paths", { top_n: 20 }, 15_000);
+  hotPathsOk = hotPaths.ok;
+  await writeJson(agentPath(repo, "evidence", "graph", "codetree-hot-paths.json"), { available: true, hot_paths_ok: hotPathsOk, hot_paths: extractMcpResult(hotPaths) });
+
+  let deadCodeOk = false;
+  const deadCode = await callMcpTool(command, repo, "find_dead_code", {}, 15_000);
+  deadCodeOk = deadCode.ok;
+  let cloneOk = false;
+  const clones = await callMcpTool(command, repo, "detect_clones", { min_lines: 5 }, 15_000);
+  cloneOk = clones.ok;
+  await writeJson(agentPath(repo, "evidence", "graph", "codetree-dead-clones.json"), { available: true, dead_code_ok: deadCodeOk, dead_code: extractMcpResult(deadCode), clones_ok: cloneOk, clones: extractMcpResult(clones) });
+
+  await writeJson(agentPath(repo, "evidence", "graph", "codetree-graph-context.json"), {
+    available: true,
+    prepared_at: new Date().toISOString(),
+    entrypoint_files: entrypointFiles,
+    skeletons_written: skeletonsOk,
+    hot_paths_written: hotPathsOk,
+    dead_code_written: deadCodeOk,
+    clones_written: cloneOk,
+    artifacts: [
+      "evidence/graph/codetree-skeletons.json",
+      "evidence/graph/codetree-hot-paths.json",
+      "evidence/graph/codetree-dead-clones.json"
+    ]
+  });
 }
 
 async function prepareGitNexus(repo: string) {

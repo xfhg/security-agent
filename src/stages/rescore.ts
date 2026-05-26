@@ -13,6 +13,11 @@ export async function rescoreStage(repo: string): Promise<void> {
   const entrypoints = await readJson<any>(agentPath(repo, "kb", "entrypoints.json"), { entrypoints: [] });
   const repoMap = await readJson<any>(agentPath(repo, "kb", "repo-map.json"), { files_count: 0 });
   const ghostContext = await readJson<any>(agentPath(repo, "kb", "ghost-context.json"), { imported: false });
+  const hotPaths = await readJson<any>(agentPath(repo, "evidence", "graph", "codetree-hot-paths.json"), null);
+  const securitySymbols = await readJson<any>(agentPath(repo, "evidence", "graph", "codetree-security-symbols.json"), null);
+  const skeletonData = await readJson<any>(agentPath(repo, "evidence", "graph", "codetree-skeletons.json"), null);
+
+  const graphContext = { hotPaths, securitySymbols, skeletonData };
 
   const review = triaged.filter((f) => f.triage.status === "needs-human-review");
   if (!review.length) {
@@ -29,7 +34,7 @@ export async function rescoreStage(repo: string): Promise<void> {
   }> = [];
 
   for (const finding of review) {
-    const entry = rescoreFinding(finding, entrypoints, repoMap, ghostContext);
+    const entry = rescoreFinding(finding, entrypoints, repoMap, ghostContext, graphContext);
     if (entry) changes.push(entry);
   }
 
@@ -57,7 +62,8 @@ function rescoreFinding(
   finding: TriagedFinding,
   entrypoints: any,
   repoMap: any,
-  ghostContext: any
+  ghostContext: any,
+  graphContext: { hotPaths: any; securitySymbols: any; skeletonData: any }
 ): { id: string; title: string; before: { status: string; priority: string }; after: { status: string; priority: string }; rule: string } | null {
   const id = finding.id;
   const title = finding.title.slice(0, 80);
@@ -83,7 +89,24 @@ function rescoreFinding(
     if (!hasEvidence) return { id, title, before, after: { status: "rejected", priority: "P4" }, rule: "Test/example/documentation path without runtime or production usage evidence" };
   }
 
-  // Rule 4: Same-directory entrypoint proximity → upgrade reachability, accept at P2
+  // Rule 4: Graph-confirmed entrypoint proximity (codetree hot paths + skeletons) → upgrade reachability, accept at P2
+  if (graphContext.hotPaths || graphContext.skeletonData) {
+    const findingFile = finding.files[0]?.path ?? "";
+    if (graphContext.hotPaths) {
+      const hotText = JSON.stringify(graphContext.hotPaths).toLowerCase();
+      if (findingFile && hotText.includes(findingFile.toLowerCase())) {
+        return { id, title, before, after: { status: "accepted", priority: "P2" }, rule: "Codetree-confirmed hot path (high complexity + call frequency) — upgraded to accepted P2" };
+      }
+    }
+    if (graphContext.skeletonData && findingFile) {
+      const skelText = JSON.stringify(graphContext.skeletonData).toLowerCase();
+      if (skelText.includes(findingFile.toLowerCase())) {
+        return { id, title, before, after: { status: "accepted", priority: "P2" }, rule: "Finding file is a confirmed entrypoint skeleton — upgraded to accepted P2" };
+      }
+    }
+  }
+
+  // Rule 4b: Same-directory entrypoint proximity (fallback) → upgrade reachability, accept at P2
   const eps = entrypoints.entrypoints ?? [];
   for (const ep of eps) {
     for (const file of finding.files) {
@@ -102,6 +125,17 @@ function rescoreFinding(
   // Rule 6: Secrets in production code paths → accept at P2
   if (finding.bug_class === "secrets" && !/test|spec|example|docs?\//i.test(pathText) && finding.files.some((f) => f.path.includes("cmd/") || f.path.includes("src/") || f.path.includes("lib/"))) {
     return { id, title, before, after: { status: "accepted", priority: "P2" }, rule: "Secret found in production code paths; runtime confirmation pending" };
+  }
+
+  // Rule 7: Graph-confirmed security symbol match (codetree security symbols) → accept at P2
+  if (graphContext.securitySymbols && finding.files.length > 0) {
+    const findingFile = finding.files[0].path;
+    const ssText = JSON.stringify(graphContext.securitySymbols).toLowerCase();
+    for (const [category] of Object.entries(graphContext.securitySymbols)) {
+      if (category === finding.bug_class && findingFile && ssText.includes(findingFile.toLowerCase())) {
+        return { id, title, before, after: { status: "accepted", priority: "P2" }, rule: `Codetree security symbol match in category "${category}" — upgraded to accepted P2` };
+      }
+    }
   }
 
   return null;
@@ -162,9 +196,11 @@ ${stillReview.map((f) => `- \`${f.id.slice(-12)}\`: ${f.title.slice(0, 80)} (${f
 1. Ghost-verified findings → accepted at claimed severity
 2. Scanner noise / insufficient evidence → rejected P4
 3. Test/example/doc paths without evidence → rejected P4
-4. Same-directory entrypoint proximity → accepted P2
+4. Codetree hot-path or entrypoint skeleton → accepted P2 (graph-confirmed)
+4b. Same-file entrypoint proximity (fallback) → accepted P2
 5. Dependency CVE/GHSA evidence → accepted at claimed severity
 6. Secrets in production paths → accepted P2
+7. Codetree security symbol match → accepted P2 (graph-confirmed)
 
 ## Pipeline Improvement Signals
 - If still-review count is high, the reachability agent may need annotation-aware routing detection (e.g., @RequestMapping, @Get, @Post in Spring, Express, Gin).

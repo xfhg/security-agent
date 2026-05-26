@@ -10,10 +10,10 @@ import { ghostPreflight, importGhostRepoContext } from "../adapters/ghost.ts";
 import { detectCodeTree } from "../adapters/codetree.ts";
 import { detectGitNexus } from "../adapters/gitnexus.ts";
 import { detectSemble } from "../adapters/semble.ts";
-import { prepareReconTools } from "../adapters/recon-tools.ts";
+import { prepareReconTools, prepareGraphContext } from "../adapters/recon-tools.ts";
 
 export async function reconStage(repo: string, options: { importGhostContext?: boolean; prepareTools?: boolean } = {}): Promise<void> {
-  const supportingTools = options.prepareTools ? await prepareReconTools(repo) : null;
+  const supportingTools = options.prepareTools !== false ? await prepareReconTools(repo) : null;
   const { repoMap, languages } = await buildRepoMap(repo);
   await writeJson(agentPath(repo, "kb", "repo-map.json"), repoMap);
   await writeJson(agentPath(repo, "kb", "languages.json"), languages);
@@ -30,6 +30,9 @@ export async function reconStage(repo: string, options: { importGhostContext?: b
   }
   const threatModel = await buildThreatModel(repo, { ...repoMap, languages }, dependencies, entrypoints);
   await writeFile(agentPath(repo, "kb", "threat-model.md"), threatModel, "utf8");
+  if (options.prepareTools !== false) {
+    await prepareGraphContext(repo);
+  }
   const tools = await Promise.all([detectSemble(), detectCodeTree(), detectGitNexus()]);
   await writeFile(agentPath(repo, "workflow", "recon-summary.md"), renderRecon(repoMap, languages, dependencies, entrypoints, graph, tools, options.importGhostContext, supportingTools), "utf8");
 }

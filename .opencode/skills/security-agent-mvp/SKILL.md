@@ -45,7 +45,7 @@ The only implemented stages are:
 - git read commands
 - OpenGrep CLI
 - RTK wrapper for noisy command output
-- `codetree` MCP for tree-sitter structure and symbol extraction — only via the CLI's `recon` stage, never called directly from the session (session server is scoped to `SECURITY_AGENT_HOME`, not `TARGET_REPO`). Read scoped results from `scans/<repo>/evidence/graph/codetree-structure.json`.
+- `codetree` MCP for tree-sitter structure and symbol extraction — scoped to `targets/`. For deep-dive queries on symbols/files in the target repo, prepend `<reponame>/` to all file paths (e.g. `intercept/cmd/sarif.go`). Use during discovery and triage to verify reachability and call graphs. The CLI's `recon` stage also writes baseline artifacts to `scans/<repo>/evidence/graph/` — read those first.
 - Cognium CLI for semantic SAST using `cognium scan ./src --category security --exclude-tests`
 - optional Semble, GitNexus, Understand-Anything adapters
 - `agent-harness-kit` MCP for task ownership, action logs, acceptance tracking, and handoffs
@@ -69,7 +69,7 @@ The only implemented stages are:
 3. Claim and close the matching harness task for each critical external tool gate: `mcp-filesystem`, `mcp-codetree`, `mcp-gitnexus`, `ahk`, `tool-gitnexus`, `tool-semble`, `tool-opengrep`, `tool-cognium`, `ghost-repo-context`, `ghost-deps`, `ghost-secrets`, `ghost-scan-code`, and `ghost-report`.
 4. Run `node --experimental-strip-types ./src/cli.ts init --repo "$TARGET_REPO"`.
 5. Run `node --experimental-strip-types ./src/cli.ts doctor --repo "$TARGET_REPO"` and `node --experimental-strip-types ./src/cli.ts toolchain verify`.
-6. Run `recon` via the CLI to produce scoped codeTree structure: `node --experimental-strip-types ./src/cli.ts run --repo "$TARGET_REPO" --stages recon`. This starts a codeTree MCP server with `--root TARGET_REPO` and writes `scans/<repo>/evidence/graph/codetree-structure.json`. Do NOT call codeTree MCP tools directly from the OpenCode session — the session server is scoped to `SECURITY_AGENT_HOME`, not `TARGET_REPO`. Read `scans/<repo>/evidence/graph/codetree-structure.json` for scoped structural context instead.
+6. Run `recon` via the CLI to produce scoped codeTree structure: `node --experimental-strip-types ./src/cli.ts run --repo "$TARGET_REPO" --stages recon`. This produces all recon artifacts including `codetree-structure.json`, security symbol scans, entrypoint skeletons, and hot-path analysis under `scans/<repo>/evidence/graph/`. Read these baseline artifacts first. Use codetree MCP directly (with `<reponame>/` path prefix) for deep-dive queries during discovery and triage.
 7. Run safe Ghost workflows against `TARGET_REPO`: `ghost-repo-context`, `ghost-scan-deps`, `ghost-scan-secrets`, `ghost-scan-code`, and `ghost-report`.
 8. Run `node --experimental-strip-types ./src/cli.ts run --repo "$TARGET_REPO" --stages recon,discovery,triage`. Rescore auto-triggers after triage, followed by auto-report.
 9. If this returns `coverage_incomplete`, stop and report `evidence/tool-gates/summary.json`. Do not call the scan complete.
@@ -89,8 +89,9 @@ Ghost defaults:
 
 ## Context Discipline
 - Do not read whole target source files into context during recon.
-- Use the CLI's `recon` stage to produce scoped codeTree artifacts; do not call codeTree MCP directly from the session.
-- Semble, GitNexus, and code graph artifacts should be read from `scans/<repo>/evidence/graph/` — never call these tools directly against the workflow workspace.
+- Use the CLI's `recon` stage to produce baseline codetree artifacts; during discovery and triage, use codetree MCP directly for deep-dive analysis on specific symbols/files (with `<reponame>/` path prefix).
+- GitNexus MCP can be used directly for graph/call-chain/execution-flow context during all phases.
+- Semble, GitNexus, and code graph CLI artifacts should be read from `scans/<repo>/evidence/graph/` as baseline; MCP tools supplement for deep-dive queries.
 - Never let codeTree scan the control repo as the analysis target; scope paths to explicit `TARGET_REPO` values, normally under `targets/<reponame>`.
 - Read targeted snippets only when a finding references a file and line.
 - Prefer `scans/<repo>/kb/repo-map.json`, `scans/<repo>/kb/entrypoints.json`, `scans/<repo>/kb/supporting-tools.json`, and `scans/<repo>/evidence/graph/*.json` over source browsing.
