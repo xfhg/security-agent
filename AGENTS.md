@@ -22,7 +22,7 @@ Path contract:
 - Use GitNexus MCP for graph/call-chain/execution-flow context during all phases.
 - Use Semble MCP for targeted semantic retrieval during all phases.
 - Do not read or import from the global Ghost home or any path outside `SECURITY_AGENT_HOME`, except `/tmp` fixtures. Ghost evidence must be local target evidence under `scans/<reponame>/evidence/ghost/`.
-- Use contained launchers from `bins/shims/*`; do not call package runners or globally installed scanner/graph tools directly.
+- Use contained launchers from `bins/shims/*` for CLI tools (codetree, gitnexus, opengrep, cognium, etc). Ghost scan binaries (`wraith`, `osv-scanner`, `poltergeist`) live under `bins/ghost/<platform>/` and are invoked via Bash when executing Ghost skill instructions. Ghost skills themselves are OpenCode skills, not CLI commands — invoke via `skill("ghost-scan-deps")`.
 - Run `security-agent doctor --repo <target>` before relying on Ghost or external-tool evidence.
 - Run `security-agent toolchain verify` before calling a scan portable or complete.
 - Default `security-agent run` is strict. If required gates fail, report `coverage_incomplete` and stop. Use `--allow-degraded` only for development/research runs.
@@ -53,8 +53,9 @@ The MVP includes only:
 - reporting
 
 Ghost evidence is enabled by default:
-- use local Ghost skills from `ghost/skills/plugins/ghost`
+- Ghost skills are OpenCode skills loaded from `ghost/skills/plugins/ghost` invoked via `skill("ghost-repo-context")`, `skill("ghost-scan-deps")`, etc. They are NOT CLI binaries — there is no `bins/shims/ghost*` shim. The `skill` tool loads the SKILL.md instructions into context, then the agent follows them directly.
 - actively run `ghost-repo-context`, `ghost-scan-deps`, `ghost-scan-secrets`, `ghost-scan-code`, and `ghost-report` during the complete `/security-agent-run` workflow
+- Ghost scan binaries (`wraith`, `osv-scanner`, `poltergeist`) live under `bins/ghost/<platform>/` and are invoked by the agent via Bash when executing Ghost scan skill instructions
 - import repo context, code findings, dependency findings, secrets findings, and Ghost report evidence from `scans/<reponame>/evidence/ghost/` into canonical artifacts
 - canonical `scans/<reponame>/` artifacts remain source of truth
 
@@ -101,5 +102,7 @@ Operational workflow reports (toolchain, stage summaries) are under `scans/<repo
 Every claim needs provenance. Prefer deterministic artifacts under `scans/<reponame>/` over conversational claims. Treat Ghost findings and scanner results as evidence, not truth.
 
 Do not bulk-read target source files during recon. First run the workflow to produce `scans/<reponame>/kb/*` and `scans/<reponame>/evidence/graph/*`, then read those artifacts.
+
+Ghost evidence lives in `scans/<reponame>/evidence/ghost/` — this is the source of truth. The `findings/normalized/ghost-*-findings.json` files only exist when non-zero findings were imported (our gate fix prevents empty `[]` files). If a Ghost scan found 0 CVEs or 0 secrets, check `evidence/ghost/scan-deps-findings.json` or `evidence/ghost/scan-secrets-findings.json` for the scan record.
 
 Reports must start from the recorded scan status. `coverage_incomplete` is not a successful complete scan.

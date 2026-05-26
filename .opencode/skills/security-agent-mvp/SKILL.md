@@ -49,7 +49,7 @@ The only implemented stages are:
 - Cognium CLI for semantic SAST using `cognium scan ./src --category security --exclude-tests`
 - Semble MCP for targeted semantic code retrieval (MCP-only, not CLI)
 - `agent-harness-kit` MCP for task ownership, action logs, acceptance tracking, and handoffs
-- safe Ghost skills enabled by default: `ghost-repo-context`, `ghost-scan-code`, `ghost-scan-deps`, `ghost-scan-secrets`, `ghost-report`
+- safe Ghost skills enabled by default: `ghost-repo-context`, `ghost-scan-code`, `ghost-scan-deps`, `ghost-scan-secrets`, `ghost-report`. Invoke via `skill("ghost-scan-deps")` — they are OpenCode skills (SKILL.md instructions), NOT CLI binaries. The skill tool injects their workflow instructions directly into context. Ghost scan binaries (`wraith`, `osv-scanner`, `poltergeist`) are under `bins/ghost/<platform>/` and called via Bash when skill instructions require them.
 
 ## Forbidden Actions
 - PoC generation
@@ -71,7 +71,7 @@ The only implemented stages are:
 4. Run `node --experimental-strip-types ./src/cli.ts init --repo "$TARGET_REPO"`.
 5. Run `node --experimental-strip-types ./src/cli.ts doctor --repo "$TARGET_REPO"` and `node --experimental-strip-types ./src/cli.ts toolchain verify`.
 6. Run `recon` via the CLI to produce scoped codeTree structure: `node --experimental-strip-types ./src/cli.ts run --repo "$TARGET_REPO" --stages recon`. This produces all recon artifacts including `codetree-structure.json`, security symbol scans, entrypoint skeletons, and hot-path analysis under `scans/<repo>/evidence/graph/`. Read these baseline artifacts first. Use codetree MCP directly (with `<reponame>/` path prefix) for deep-dive queries during discovery and triage.
-7. Run safe Ghost workflows against `TARGET_REPO`. Each Ghost skill REQUIRES `repo_path` — pass it explicitly (e.g. `ghost-scan-deps repo_path=targets/intercept`). All Ghost output goes to `scans/<reponame>/evidence/ghost/`. Run: `ghost-repo-context`, `ghost-scan-deps`, `ghost-scan-secrets`, `ghost-scan-code` (skip if OpenGrep+Cognium both ran), and `ghost-report`.
+7. Invoke Ghost skills via the `skill` tool (NOT CLI/executables). Each call injects the SKILL.md workflow into context. Pass `repo_path=<TARGET_REPO>` in the skill call arguments. Run in order: `skill("ghost-repo-context")`, `skill("ghost-scan-deps")`, `skill("ghost-scan-secrets")`, `skill("ghost-scan-code")` (skip if OpenGrep+Cognium both ran), `skill("ghost-report")`. All Ghost output goes to `scans/<reponame>/evidence/ghost/`.
 8. Run `node --experimental-strip-types ./src/cli.ts run --repo "$TARGET_REPO" --stages recon,discovery,triage`. Rescore auto-triggers after triage, followed by auto-report.
 9. If this returns `coverage_incomplete`, stop and report `evidence/tool-gates/summary.json`. Do not call the scan complete.
 10. Read only `scans/<repo>/kb/*` and `scans/<repo>/evidence/graph/*` for recon context.

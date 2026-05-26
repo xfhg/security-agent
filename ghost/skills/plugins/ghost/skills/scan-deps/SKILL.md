@@ -62,7 +62,7 @@ If no lockfiles found: write `{"lockfiles_found": 0, "lockfiles": []}`. Skip to 
 For each lockfile, run wraith:
 
 ```bash
-"$WRAPPER_BIN" scan --offline --format json --output "<output_dir>/scan-<id>.json" "<repo_path>/<lockfile_path>"
+"$WRAPPER_BIN" scan --format json --output "<output_dir>/scan-<id>.json" "<repo_path>/<lockfile_path>"
 ```
 
 Exit codes 0 (no vulns) and 1 (vulns found) are both normal.
