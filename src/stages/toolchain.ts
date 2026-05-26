@@ -9,8 +9,8 @@ import { executable, resolveContainedCommand } from "../core/toolchain.ts";
 
 const platforms = ["darwin-arm64", "darwin-amd64", "linux-arm64", "linux-amd64"];
 const ghostTools = ["wraith", "osv-scanner", "poltergeist"];
-const toolShims = ["opencode", "ahk", "filesystem-server", "codetree", "gitnexus", "semble", "opengrep", "cognium"];
-const requiredContainedTools = ["codetree", "gitnexus", "filesystem-server", "semble", "opengrep", "cognium"];
+const toolShims = ["opencode", "ahk", "filesystem-server", "codetree", "gitnexus", "opengrep", "cognium"];
+const requiredContainedTools = ["codetree", "gitnexus", "filesystem-server", "opengrep", "cognium"];
 
 export async function verifyToolchain(): Promise<any> {
   const entries = [
@@ -115,7 +115,7 @@ async function probeResolvedCommand(name: string, file: string): Promise<{ ok: b
     const js = path.join(securityAgentHome(), "node_modules", "@modelcontextprotocol", "server-filesystem", "dist", "index.js");
     return executable(js) ? { ok: true, version: null, reason: null } : { ok: false, version: null, reason: "local filesystem MCP package is missing" };
   }
-  const args = name === "codetree" || name === "semble" ? ["--help"] : ["--version"];
+  const args = name === "codetree" ? ["--help"] : ["--version"];
   const result = await runCommand(file, args, 5_000);
   return {
     ok: result.code === 0,

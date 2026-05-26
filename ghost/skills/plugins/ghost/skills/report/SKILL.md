@@ -1,135 +1,58 @@
 ---
 name: "ghost-report"
 description: "Ghost Security — combined security report. Aggregates findings from all scan skills (scan-deps, scan-secrets, scan-code) into a single prioritized report focused on the highest risk, highest confidence issues. Use when the user requests a security overview, vulnerability summary, full security audit, or combined scan results."
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: Read, Write, Glob, Grep, Bash
+argument-hint: "repo_path=<targets/reponame>"
 license: apache-2.0
 metadata:
-  version: 1.1.0
+  version: 2.0.0
 ---
 
 # Combined Security Report
 
-You aggregate findings from all scan skills (scan-deps, scan-secrets, scan-code) into a single prioritized report. Do all work yourself — do not spawn subagents or delegate.
+You aggregate findings from all scan skills into a single report. ALL output goes to `scans/<reponame>/evidence/ghost/`.
+
+## Required Input
+
+- **repo_path** (REQUIRED): target repository path. From the workflow, this is `TARGET_REPO`.
 
 $ARGUMENTS
 
 ---
 
-## Step 0: Setup
+## Setup
 
-Set `repo_path` to the target repository (use `${TARGET_REPO}` or the value passed via $ARGUMENTS). Never default to `$(pwd)`.
-
-Run this Bash command to compute paths:
 ```bash
-repo_path="<insert path, e.g. targets/intercept>" && cd "$repo_path" && repo_name=$(basename "$repo_path") && remote_url=$(git remote get-url origin 2>/dev/null || echo "$repo_path") && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && short_sha=$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d) && ghost_root="${SECURITY_AGENT_HOME}/.local/ghost" && ghost_repo_dir="${ghost_root}/repos/${repo_id}" && scans_dir="${ghost_repo_dir}/scans/${short_sha}" && cache_dir="${ghost_repo_dir}/cache" && skill_dir=$(find "${SECURITY_AGENT_HOME}" -path '*/skills/report/SKILL.md' 2>/dev/null | head -1 | xargs dirname) && echo "repo_path=$repo_path scans_dir=$scans_dir cache_dir=$cache_dir skill_dir=$skill_dir"
+repo_path="targets/intercept" && reponame=$(basename "$repo_path") && output_dir="${SECURITY_AGENT_HOME}/scans/${reponame}/evidence/ghost" && skill_dir=$(find "${SECURITY_AGENT_HOME}" -path '*skills/report/SKILL.md' 2>/dev/null | head -1 | xargs dirname) && echo "repo_path=$repo_path output_dir=$output_dir"
 ```
 
-Store `scans_dir` (commit-level scan directory), `cache_dir`, and `skill_dir`.
+Store `repo_path`, `reponame`, `output_dir`, and `skill_dir`.
 
 ---
 
 ## Cache Check
 
-If `<scans_dir>/report.md` already exists, show:
-
-```
-Combined security report is at: <scans_dir>/report.md
-```
-
-And stop. Do not regenerate it.
+If `<output_dir>/report.md` already exists, show its path and skip to output.
 
 ---
 
-## Step 1: Read Repo Context
+## Gather Findings
 
-Read `<cache_dir>/repo.md` if it exists. Extract:
-- Business criticality
-- Sensitive data types
-- Component map
+Read these files if they exist:
+- `<output_dir>/scan-deps-findings.json`
+- `<output_dir>/scan-secrets-findings.json`
+- `<output_dir>/scan-code-findings.json`
+- `<output_dir>/repo.md`
 
-If it does not exist, continue without it — this is not an error.
-
----
-
-## Step 2: Discover Scan Results
-
-List the contents of `<scans_dir>` to see which scan-type directories exist. Recognized types:
-- `deps/` — SCA / dependency vulnerability scan
-- `secrets/` — secrets and credentials scan
-- `code/` — code security scan (SAST)
-
-If none of these directories exist, report an error:
-
-```
-No scan results found in <scans_dir>. Run one or more scan skills first:
-  /ghost-scan-deps
-  /ghost-scan-secrets
-  /ghost-scan-code
-```
-
-And stop.
+If `<output_dir>/repo.md` exists, include business criticality and sensitive data context.
 
 ---
 
-## Step 3: Collect Findings
+## Generate Report
 
-For each scan type that exists, glob `<scans_dir>/<type>/findings/*.md` and read each finding file **in full**. Retain the complete markdown body of every finding — the report will inline this content directly so readers never need to open individual finding files.
+1. Compute statistics: findings by severity, source, type
+2. Read `<skill_dir>/agents/summarize/template-report.md` for the template
+3. Prioritize highest risk, highest confidence issues first
+4. Write to `<output_dir>/report.md`
 
-From each finding, also extract these metadata fields for filtering and sorting:
-
-- **ID** — from `## Metadata` → `ID`
-- **Type** — the scan type (`deps`, `secrets`, or `code`)
-- **Severity** — from `## Metadata` → `Severity` (high, medium, low)
-- **Status** — from `## Metadata` → `Status` (e.g., confirmed-exploitable, unverified, verified, rejected, clean)
-
----
-
-## Step 4: Filter and Sort
-
-**Filter:** Keep only high-confidence findings:
-- For `deps` findings: status is `confirmed-exploitable`
-- For `secrets` findings: status is NOT `clean` and NOT `rejected`
-- For `code` findings: status is `verified` or `unverified` (NOT `rejected`)
-
-**Exclude** any finding with status `clean`, `rejected`, or `false-positive`.
-
-**Sort** the remaining findings:
-1. By severity: high first, then medium, then low
-2. Within same severity: deps before secrets before code
-
----
-
-## Step 5: Read Per-Scan Reports
-
-For `deps` and `secrets` scan types, read `<scans_dir>/<type>/report.md` if present. Extract:
-- Statistics (candidates scanned, confirmed findings, false positives filtered)
-- Executive summary highlights
-
-Note: `code` does not produce a `report.md`. For code scan coverage, count the finding files in `<scans_dir>/code/findings/` directly. The "Candidates Scanned" count is the total number of finding files (all statuses). "Confirmed Findings" is the count with status `verified`, `confirmed`, or `unverified`. "False Positives Filtered" is the count with status `rejected`. Do NOT count clean file analyses from the nomination/analysis funnel — those never became findings.
-
-If a per-scan report does not exist for deps or secrets, note it as unavailable.
-
----
-
-## Step 6: Generate Report
-
-1. Read `<skill_dir>/report-template.md`
-2. Populate the template with collected data:
-   - Fill Scan Information with repository name, commit SHA, date, and which scans ran
-   - Write Executive Summary using repo context and aggregated findings
-   - For all writing elements in this security-focused, objective and fact based report, use a neutral, human tone that balances expertise with ease of reading. Do not use emojis, em-dashes, etc.
-   - For Critical & High findings (severity = high): inline the substantive content from each finding file directly into the report — include code snippets, assessment tables, remediation commands, and all relevant detail so the report is fully self-contained
-   - For Medium findings: write a full subsection per finding with description, location, code context, and remediation (not a condensed table)
-   - Omit low-severity findings (they remain in per-scan finding files only)
-   - Fill Scan Coverage table from per-scan report statistics (for code, use finding file counts from Step 5)
-   - Add a brief methodology note per scan type that ran (1-2 sentences drawn from per-scan reports)
-   - Do NOT include links to per-scan reports or individual finding files — all content is inlined
-3. Write the report to `<scans_dir>/report.md`
-
----
-
-## Step 7: Show Output
-
-```
-Combined security report is at: <scans_dir>/report.md
-```
+Report: `Combined security report at: <output_dir>/report.md`

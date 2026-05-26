@@ -77,7 +77,6 @@ export const gateTaskSpecs: Record<string, AhkTaskSpec> = {
   "mcp-codetree": gate("mcp-codetree", "codeTree MCP JSON-RPC initialize succeeds"),
   "mcp-gitnexus": gate("mcp-gitnexus", "GitNexus MCP JSON-RPC initialize succeeds"),
   "tool-gitnexus": gate("tool-gitnexus", "GitNexus contained command is available"),
-  "tool-semble": gate("tool-semble", "Semble contained command is available"),
   "tool-opengrep": gate("tool-opengrep", "OpenGrep contained command is available"),
   "tool-cognium": gate("tool-cognium", "Cognium contained command is available"),
   "ghost-repo-context": gate("ghost-repo-context", "Ghost repo context evidence exists"),

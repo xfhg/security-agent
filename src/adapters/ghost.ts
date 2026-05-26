@@ -1,6 +1,6 @@
 import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { agentPath, binPath, exists, isAllowedWorkspacePath, localPath, platformArch, securityAgentHome } from "../core/paths.ts";
+import { agentPath, binPath, exists, isAllowedWorkspacePath, platformArch, securityAgentHome } from "../core/paths.ts";
 import { nowIso, repoCommit, stableHash } from "../core/provenance.ts";
 import { redactSecrets } from "../core/redaction.ts";
 import { writeJson } from "../core/artifact-writer.ts";
@@ -14,8 +14,6 @@ type GhostScanType = "code" | "deps" | "secrets";
 export async function detectGhost(repo: string, skillsRepoPath = process.env.GHOST_SKILLS_REPO_PATH ?? DEFAULT_GHOST_SKILLS_REPO_PATH) {
   const evidenceDir = agentPath(repo, "evidence", "ghost");
   const integrationsDir = agentPath(repo, "integrations", "ghost");
-  const repoId = stableHash(path.resolve(repo)).slice(0, 16);
-  const ghostRepoDir = localPath("ghost", "repos", repoId);
   const repoContext = await firstExisting([path.join(evidenceDir, "repo.md"), path.join(integrationsDir, "repo.md")]);
   const report = await firstExisting([path.join(evidenceDir, "report.md"), path.join(integrationsDir, "report.md")]);
   const skills = await detectGhostSkills(skillsRepoPath);
@@ -31,12 +29,6 @@ export async function detectGhost(repo: string, skillsRepoPath = process.env.GHO
   return {
     available: Object.values(detected).some(Boolean),
     mode: "local-artifact-import-only",
-    ghost_home: ".local/ghost",
-    forbidden_external_paths: ["global-user-ghost-home"],
-    allowed_roots: [securityAgentHome(), "/tmp"],
-    repo_id: repoId,
-    cache_dir: path.join(".local", "ghost", "repos", repoId, "cache"),
-    scans_dir: path.join(".local", "ghost", "repos", repoId, "scans"),
     evidence_dir: evidenceDir,
     integrations_dir: integrationsDir,
     skills_repo_path: skills.available ? skillsRepoPath : null,
@@ -67,13 +59,9 @@ export async function ghostPreflight(repo: string) {
     checked_at: nowIso(),
     repo_commit: await repoCommit(repo),
     platform: currentPlatform,
-    ghost_home: detection.ghost_home,
-    cache_dir: detection.cache_dir,
-    scans_dir: detection.scans_dir,
     evidence_dir: detection.evidence_dir,
     required_binaries: binaryChecks,
     skill_path_scan: skillLeakChecks,
-    forbidden_external_paths: detection.forbidden_external_paths,
     blockers
   };
   await mkdir(agentPath(repo, "evidence", "ghost"), { recursive: true });

@@ -7,7 +7,6 @@ import { detectGitNexus } from "../adapters/gitnexus.ts";
 import { ghostPreflight, importGhostFindings, importGhostRepoContext } from "../adapters/ghost.ts";
 import { probeMcpInitialize } from "../adapters/mcp-probe.ts";
 import { detectOpenGrep } from "../adapters/opengrep.ts";
-import { detectSemble } from "../adapters/semble.ts";
 import { readJson, writeJson } from "./artifact-writer.ts";
 import { agentPath, binPath, exists, securityAgentHome } from "./paths.ts";
 import { nowIso, repoCommit } from "./provenance.ts";
@@ -52,7 +51,6 @@ const requiredGateNames = [
   "mcp-codetree",
   "mcp-gitnexus",
   "tool-gitnexus",
-  "tool-semble",
   "tool-opengrep",
   "tool-cognium",
   "ghost-repo-context",
@@ -69,7 +67,6 @@ export async function runCoverageGates(repo: string, options: { allowDegraded?: 
   gates.push(await probeCodeTreeMcp(repo));
   gates.push(await probeGitNexusMcp(repo));
   gates.push(await probeCommandGate(repo, "tool-gitnexus", "gitnexus", ["--version"]));
-  gates.push(await probeCommandGate(repo, "tool-semble", "semble", ["--help"]));
   gates.push(await probeCommandGate(repo, "tool-opengrep", "opengrep", ["--version"]));
   gates.push(await probeCommandGate(repo, "tool-cognium", "cognium", ["--version"]));
   gates.push(...await probeGhostGates(repo));
@@ -220,7 +217,6 @@ async function probeCommandGate(repo: string, gate: string, commandName: string,
   const result = resolver.contained ? await runCapture(resolver.command, args, repo, 10_000) : { code: null, stdout: "", stderr: resolver.reason ?? "not contained" };
   const detector =
     commandName === "gitnexus" ? await detectGitNexus() :
-    commandName === "semble" ? await detectSemble() :
     commandName === "opengrep" ? await detectOpenGrep() :
     commandName === "cognium" ? await detectCognium() :
     null;

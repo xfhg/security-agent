@@ -53,7 +53,7 @@ export async function doctorStage(repo: string): Promise<void> {
     security_agent_home: securityAgentHome(),
     allowed_roots: [securityAgentHome(), "/tmp"],
     local_roots: {
-      ghost_home: ".local/ghost",
+      ghost_home: "scans/<reponame>/evidence/ghost",
       cache_home: ".local/cache",
       opencode_state: ".local/state/opencode",
       bins: "bins"

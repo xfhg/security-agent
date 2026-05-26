@@ -1,71 +1,57 @@
 ---
 name: "ghost-repo-context"
 description: "Scans directory structure, detects projects, maps dependencies, and documents code organization into a repo.md file. Use when the user needs a codebase overview, project structure map, or repository context before security analysis."
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: Read, Write, Glob, Grep, Bash
+argument-hint: "repo_path=<targets/reponame>"
 license: apache-2.0
 metadata:
-  version: 1.1.0
+  version: 2.0.0
 ---
 
 # Repository Context Builder
 
-You gather repository context by detecting projects, summarizing their architecture, and writing the results to `repo.md`. Do all work yourself — do not spawn subagents or delegate.
+You gather repository context by detecting projects, summarizing their architecture, and writing `repo.md`. ALL output goes to `scans/<reponame>/evidence/ghost/`.
 
-## Inputs
+## Required Input
 
-Parse these from `$ARGUMENTS` (key=value pairs):
-- **repo_path**: path to the repository root. **Required** — for workflow runs, pass `TARGET_REPO` (e.g. `targets/<reponame>`). Never default to `$(pwd)`.
-- **cache_dir**: path to the cache directory (defaults to `${SECURITY_AGENT_HOME}/.local/ghost/repos/<repo_id>/cache`)
+- **repo_path** (REQUIRED): path to the target repository (e.g. `targets/intercept`). From the workflow, this is `TARGET_REPO`.
 
 $ARGUMENTS
 
-If `repo_path` is not provided in $ARGUMENTS, use `${TARGET_REPO}`. If neither is available, report an error.
-
-If `cache_dir` is not provided, compute it from `repo_path`:
-```bash
-repo_path="<insert path>" && cd "$repo_path" && repo_name=$(basename "$repo_path") && remote_url=$(git remote get-url origin 2>/dev/null || echo "$repo_path") && short_hash=$(printf '%s' "$remote_url" | git hash-object --stdin | cut -c1-8) && repo_id="${repo_name}-${short_hash}" && ghost_root="${SECURITY_AGENT_HOME}/.local/ghost" && cache_dir="${ghost_root}/repos/${repo_id}/cache" && echo "repo_path=$repo_path cache_dir=$cache_dir"
-```
-
-Also compute `repo_path` from $ARGUMENTS if provided directly.
-
-## Tool Restrictions
-
-Do NOT use WebFetch or WebSearch. All work must use only local files in the repository.
+---
 
 ## Setup
 
-Set `repo_path` to the target repository (from $ARGUMENTS or `${TARGET_REPO}`). All file operations MUST use paths under `repo_path`.
+Set `repo_path` from $ARGUMENTS (or `${TARGET_REPO}`). ALL file operations use `repo_path`.
 
-Discover this skill's own directory so you can reference agent files:
+Compute output path:
+
 ```bash
-skill_dir=$(find "${SECURITY_AGENT_HOME}" -path '*/skills/repo-context/SKILL.md' 2>/dev/null | head -1 | xargs dirname)
+repo_path="targets/intercept" && reponame=$(basename "$repo_path") && output_dir="${SECURITY_AGENT_HOME}/scans/${reponame}/evidence/ghost" && mkdir -p "$output_dir" && echo "repo_path=$repo_path output_dir=$output_dir"
+```
+
+Discover skill directory:
+```bash
+skill_dir=$(find "${SECURITY_AGENT_HOME}" -path '*skills/repo-context/SKILL.md' 2>/dev/null | head -1 | xargs dirname)
 echo "skill_dir=$skill_dir"
 ```
 
 ---
 
-## Check Cache First
+## Check Cache
 
-Check if `<cache_dir>/repo.md` already exists. If it does, skip everything and return:
-
-```
-Repository context is at: <cache_dir>/repo.md
-```
-
-If it does not exist, run `mkdir -p <cache_dir>` and continue.
+If `<output_dir>/repo.md` already exists, skip and return its path.
 
 ---
 
 ## Workflow
 
-1. **Detect Projects** — Read `<skill_dir>/detector.md` and follow its instructions against `<repo_path>`. Save the full detection output (project details needed for step 2). If detection finds no projects, write a minimal `repo.md` noting "No projects detected" and skip to step 4.
+1. **Detect Projects** — Read `<skill_dir>/detector.md` and follow its instructions against `repo_path`. Save detection output. If no projects detected, write minimal repo.md and skip to step 4.
 
-2. **Summarize Each Project** — Read `<skill_dir>/summarizer.md`. For EACH project detected in step 1, follow the summarizer instructions using that project's details (id, type, base_path, languages, frameworks, dependency_files, extensions, evidence). Collect the summary for each project. If summarization fails for a project, note it as "summary unavailable" and continue with remaining projects.
+2. **Summarize Each Project** — Read `<skill_dir>/summarizer.md`. For EACH detected project, follow summarizer instructions using that project's details. Collect summaries.
 
-3. **Write repo.md** — Combine detection and summary results into `<cache_dir>/repo.md` using the format in `<skill_dir>/template-repo.md`. For each project include:
-   - Detection: ID, Type, Base Path, Languages, Frameworks, Dependency Files, Extensions, Evidence
-   - Summary: Architectural summary, Sensitive Data Types, Business Criticality, Component Map, Evidence
+3. **Write repo.md** — Combine detection and summary results into `<output_dir>/repo.md` using `<skill_dir>/template-repo.md` format.
 
-4. **Validate** — Read `<cache_dir>/repo.md` back and verify it contains the expected sections from `<skill_dir>/template-repo.md` (e.g., project entries with Detection and Summary fields). If the file is missing or malformed, retry the write once before reporting an error.
+4. **Validate** — Read `<output_dir>/repo.md` back and verify expected sections exist.
 
-5. **Output** — Return: `Repository context is at: <cache_dir>/repo.md`
+5. **Output** — Return: `Repository context at: <output_dir>/repo.md`

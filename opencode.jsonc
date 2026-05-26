@@ -51,7 +51,9 @@
       ".git/**",
       "scans/**",
       ".local/**",
-      ".harness/**"
+      ".harness/**",
+      ".codetree/**",
+      "targets/**"
     ]
   },
 

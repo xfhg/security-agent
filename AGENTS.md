@@ -18,9 +18,9 @@ Path contract:
 - OpenCode starts in `SECURITY_AGENT_HOME`; the CLI writes artifacts under `scans/<reponame>/` (never inside the target repo).
 - **Target boundary**: `TARGET_REPO` is the ONLY repo under analysis. Do not read files from other directories under `targets/`. Keep one target repo under `targets/` at a time.
 - MCP tools rooted at `SECURITY_AGENT_HOME`. The `codetree` MCP is scoped to `targets/` — it sees all repos under `targets/`. **Repo-wide queries** (`get_repository_map`, `search_graph`, `find_hot_paths`, `detect_clones`, `find_dead_code`) MUST read CLI-produced artifacts from `scans/<reponame>/evidence/graph/` — the CLI `recon` stage scopes to TARGET_REPO exactly. **Deep-dive queries** (`get_symbol`, `get_call_graph`, `analyze_dataflow`, `find_references`, `get_file_skeleton`) may use session MCP with `<reponame>/` prefix. Never call `get_repository_map` via session MCP — it will mix repos.
-- Ghost skills must run against the explicit `TARGET_REPO` path, never default to `$(pwd)`. All Ghost output goes to `${SECURITY_AGENT_HOME}/.local/ghost/` — never to the global user Ghost home.
+- Ghost skills must run against the explicit `TARGET_REPO` path, never default to `$(pwd)`. All Ghost output goes to `scans/<reponame>/evidence/ghost/`. No intermediate caches outside `scans/`.
 - Use GitNexus MCP for graph/call-chain/execution-flow context during all phases.
-- Scope Semble work to `TARGET_REPO` paths via the CLI recon stage; read results from `scans/<reponame>/evidence/graph/`.
+- Use Semble MCP for targeted semantic retrieval during all phases.
 - Do not read or import from the global Ghost home or any path outside `SECURITY_AGENT_HOME`, except `/tmp` fixtures. Ghost evidence must be local target evidence under `scans/<reponame>/evidence/ghost/`.
 - Use contained launchers from `bins/shims/*`; do not call package runners or globally installed scanner/graph tools directly.
 - Run `security-agent doctor --repo <target>` before relying on Ghost or external-tool evidence.
@@ -64,7 +64,7 @@ Harness is mandatory:
 - OpenCode has an `agent-harness-kit` MCP server
 - agents must claim/update harness tasks before phase work
 - every operator request that starts, resumes, changes, or reviews a target workflow must begin with `tasks.get('in_progress')` and `tasks.get('pending')`
-- every critical external tool has a harness task gate: codeTree, GitNexus, Semble, Ghost, OpenGrep, and Cognium
+- every critical external tool has a harness task gate: codeTree, GitNexus, Ghost, OpenGrep, and Cognium
 - complete scans require `scans/<reponame>/evidence/tool-gates/<gate>.json` for every required gate and `scans/<reponame>/evidence/coverage-status.json`
 - do not mark a tool task done until its raw/intermediary artifact exists or a blocker artifact explains why the tool could not run
 - after verifying each acceptance criterion, call `tasks.acceptance.update(criterionId)`; `tasks.update(taskId, 'done')` without acceptance updates is not sufficient
@@ -73,7 +73,6 @@ Recon tool order:
 - the CLI's `recon` stage starts codeTree with `--root TARGET_REPO` and writes `scans/<reponame>/evidence/graph/codetree-structure.json` — read that baseline artifact first.
 - use codetree MCP for deep-dive queries on specific files/symbols during discovery and triage (prepend `<reponame>/` to all file paths)
 - use GitNexus MCP for graph/call-chain/execution-flow context
-- use Semble MCP for targeted retrieval
 - only then read targeted source snippets referenced by artifacts
 
 Forbidden by default:

@@ -1,4 +1,5 @@
-import { writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { writeJson } from "../core/artifact-writer.ts";
 import { agentPath } from "../core/paths.ts";
 import { buildRepoMap } from "../agents/recon/repo-cartographer.ts";
@@ -9,7 +10,6 @@ import { buildThreatModel } from "../agents/recon/threat-model.ts";
 import { ghostPreflight, importGhostRepoContext } from "../adapters/ghost.ts";
 import { detectCodeTree } from "../adapters/codetree.ts";
 import { detectGitNexus } from "../adapters/gitnexus.ts";
-import { detectSemble } from "../adapters/semble.ts";
 import { prepareReconTools, prepareGraphContext } from "../adapters/recon-tools.ts";
 
 export async function reconStage(repo: string, options: { importGhostContext?: boolean; prepareTools?: boolean } = {}): Promise<void> {
@@ -33,7 +33,8 @@ export async function reconStage(repo: string, options: { importGhostContext?: b
   if (options.prepareTools !== false) {
     await prepareGraphContext(repo);
   }
-  const tools = await Promise.all([detectSemble(), detectCodeTree(), detectGitNexus()]);
+  try { await rm(path.join(repo, ".codetree"), { recursive: true, force: true }); } catch { /* ignore */ }
+  const tools = await Promise.all([detectCodeTree(), detectGitNexus()]);
   await writeFile(agentPath(repo, "workflow", "recon-summary.md"), renderRecon(repoMap, languages, dependencies, entrypoints, graph, tools, options.importGhostContext, supportingTools), "utf8");
 }
 
@@ -58,7 +59,6 @@ ${tools.map((tool) => `- ${tool.name}: ${tool.available ? "available" : `unavail
 
 ## Supporting Tool Artifacts
 ${supportingTools ? `- GitNexus prepared: ${Boolean(supportingTools.gitnexus?.prepared)}
-- Semble prepared: ${Boolean(supportingTools.semble?.prepared)}
 - Details: kb/supporting-tools.json, evidence/graph/` : "- Not prepared. Run recon with --prepare-tools."}
 `;
 }
