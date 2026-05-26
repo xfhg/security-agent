@@ -290,14 +290,6 @@ async function probeGhostGates(repo: string): Promise<CoverageGate[]> {
     return (await artifactExists(repo, artifactPaths)) ? null : `Ghost binary blocked and ${artifactPaths.join(", ")} missing`;
   };
 
-  const nativeSASTExists = await exists(agentPath(repo, "findings", "raw", "opengrep.json")) || await exists(agentPath(repo, "findings", "raw", "semantic-sast.json"));
-  const codeGate = nativeSASTExists && !codeEvidence && !(code.length > 0)
-    ? await ghostSkippedGate(repo, "ghost-scan-code", "native OpenGrep + Cognium SAST covers code scanning; Ghost scan-code skipped")
-    : await ghostGate(repo, "ghost-scan-code",
-        preflightOk ? (code.length > 0 || codeEvidence) : await artifactExists(repo, ["findings/normalized/ghost-code-findings.json"]),
-        ["findings/normalized/ghost-code-findings.json"],
-        await resolveReason(code.length > 0 || codeEvidence, ["findings/normalized/ghost-code-findings.json"], (code.length > 0 || codeEvidence) ? null : "Ghost code scan execution artifact missing"));
-
   return [
     await ghostGate(repo, "ghost-repo-context",
       preflightOk ? Boolean((repoContext as any).imported) : await artifactExists(repo, ["kb/ghost-context.json"]),
@@ -311,13 +303,15 @@ async function probeGhostGates(repo: string): Promise<CoverageGate[]> {
       preflightOk ? secretsEvidence : await artifactExists(repo, ["findings/normalized/ghost-secrets-findings.json"]),
       ["findings/normalized/ghost-secrets-findings.json"],
       await resolveReason(secretsEvidence, ["findings/normalized/ghost-secrets-findings.json"], secretsEvidence ? null : "Ghost secrets scan execution artifact missing")),
-    codeGate,
+    await ghostGate(repo, "ghost-scan-code",
+      preflightOk ? (code.length > 0 || codeEvidence) : await artifactExists(repo, ["findings/normalized/ghost-code-findings.json"]),
+      ["findings/normalized/ghost-code-findings.json"],
+      await resolveReason(code.length > 0 || codeEvidence, ["findings/normalized/ghost-code-findings.json"], (code.length > 0 || codeEvidence) ? null : "Ghost code scan execution artifact missing")),
     await ghostGate(repo, "ghost-report",
-      preflightOk ? reportExists : await artifactExists(repo, ["reports/ghost-summary.md"]),
-      ["reports/ghost-summary.md"],
-      await resolveReason(reportExists, ["reports/ghost-summary.md"], reportExists ? null : "Ghost report artifact missing"))
-  ];
-}
+      reportExists || await artifactExists(repo, ["security/ghost-findings.md"]),
+      ["security/ghost-findings.md"],
+      await resolveReason(reportExists, ["security/ghost-findings.md"], reportExists ? null : "Ghost report artifact missing"))
+  ];}
 
 async function artifactExists(repo: string, artifacts: string[]): Promise<boolean> {
   for (const artifact of artifacts) {

@@ -127,7 +127,8 @@ This command performs:
 5. recon with default supporting-tool preparation, which imports Ghost repo context and prepares GitNexus/Semble/code graph evidence
 6. `discovery`, which runs OpenGrep/focused native agents, sensitive exposure checks, and imports Ghost code/deps/secrets evidence
 7. `triage`, with dedup, reachability, exploitability, impact, false-positive challenge, severity panel, and Ghost reconciliation
-8. automatic report generation after triage, including Ghost summary when evidence exists
+8. auto-rescore to re-evaluate needs-human-review with full KB context
+9. automatic report generation after triage, including Ghost summary when evidence exists
 
 Default behavior is strict. If any mandatory gate is blocked, the run stops with `scan_status: coverage_incomplete` and writes blocker artifacts under `evidence/tool-gates/`. Use `--allow-degraded` only for development or research runs.
 
@@ -377,6 +378,7 @@ Valid stage names:
 - `recon`
 - `discovery`
 - `triage`
+- `rescore`
 - `report`
 
 The recommended stage list is:

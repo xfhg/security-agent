@@ -85,7 +85,7 @@ function renderGhostSummary(findings: TriagedFinding[], completeness: string, ga
   const ghost = findings.filter((f) => f.external_source === "ghost");
   const ghostGates = gates.filter((gate) => gate.gate.startsWith("ghost-"));
   const ghostDetail = (f: TriagedFinding): string => {
-    const locs = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}\``).join(", ") || "unknown";
+    const locs = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}\``).join(", ") || (f.bug_class === "dependency" ? "N/A (external dependency)" : "unknown");
     return `### ${f.title.slice(0, 100)}
 
 | Field | Value |
@@ -135,7 +135,7 @@ function renderMvpSummary(
   };
 
   const findingRow = (f: TriagedFinding): string => {
-    const locs = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}\``).join(", ") || "unknown";
+    const locs = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}\``).join(", ") || (f.bug_class === "dependency" ? "N/A (external dependency)" : "unknown");
     return `| \`${f.id.slice(-12)}\` | ${f.triage.priority} | ${f.triage.final_severity} | ${f.triage.status} | ${f.bug_class} | ${locs} | ${f.title.slice(0, 60)} |`;
   };
 
@@ -208,7 +208,7 @@ function renderDetailedReport(
   };
 
   const findingFull = (f: TriagedFinding): string => {
-    const files = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}-${file.end_line}\``).join("\n") || "unknown";
+    const files = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}-${file.end_line}\``).join("\n") || (f.bug_class === "dependency" ? "N/A (external dependency)" : "unknown");
     const evidenceBlock = f.evidence.map((e) =>
       `  - **[${e.kind}]** ${e.path ? repoRelativePath(repo, e.path) : ""}${e.line ? `:${e.line}` : ""}: ${e.content.slice(0, 300)}`
     ).join("\n") || "  - none";
@@ -346,7 +346,7 @@ function renderReviewChecklist(review: TriagedFinding[], repo: string): string {
   };
 
   const checkItem = (f: TriagedFinding): string => {
-    const locs = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}\``).join(", ") || "unknown";
+    const locs = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}\``).join(", ") || (f.bug_class === "dependency" ? "N/A (external dependency)" : "unknown");
     const checks = f.triage.required_human_checks.map((c) => `    - [ ] ${c}`).join("\n");
     return `## ${f.id.slice(-12)} — ${f.title.slice(0, 60)}
 

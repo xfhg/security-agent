@@ -215,6 +215,9 @@ function normalizeGhostItem(repo: string, scanType: GhostScanType, item: any, so
   const severity = mapSeverity(item.severity ?? item.Severity);
   const bugClass = scanType === "deps" ? "dependency" : scanType === "secrets" ? "secrets" : classifyGhostCode(item);
   const files = parseGhostFiles(item);
+  if (files.length === 0 && scanType === "deps" && pkgName) {
+    files.push({ path: `${pkgName}@${pkgVersion}`, start_line: 1, end_line: 1 });
+  }
   const status = scanType === "deps" && (vulnId || String(item.ID || ""))
     ? "verified"
     : mapExternalStatus(item.status ?? item.external_status ?? item.confidence);

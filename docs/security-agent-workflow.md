@@ -62,7 +62,7 @@ Filesystem boundary:
    node --experimental-strip-types ./src/cli.ts run --repo "$TARGET_REPO" --stages recon,discovery,triage
    ```
 
-   Default mode is strict: blocked required gates stop the run and write `scan_status: coverage_incomplete` to `scans/<reponame>/reports/mvp-summary.md`. Use `--allow-degraded` only for research runs.
+   Default mode is strict: blocked required gates stop the run and write `scan_status: coverage_incomplete` to `scans/<reponame>/security/executive-summary.md`. Use `--allow-degraded` only for research runs.
 
 5. Safe Ghost workflows run against the target before native import.
 
@@ -118,7 +118,7 @@ Filesystem boundary:
    - `scans/<reponame>/kb/threat-model.md`
    - `scans/<reponame>/kb/ghost-context.json`
    - `scans/<reponame>/integrations/ghost/skills.json`
-   - `scans/<reponame>/reports/recon.md`
+   - `scans/<reponame>/workflow/recon-summary.md`
 
 8. Discovery reads KB artifacts and tool evidence, then scans.
 
@@ -132,7 +132,7 @@ Filesystem boundary:
    - `scans/<reponame>/findings/normalized/ghost-code-findings.json`
    - `scans/<reponame>/findings/normalized/ghost-deps-findings.json`
    - `scans/<reponame>/findings/normalized/ghost-secrets-findings.json`
-   - `scans/<reponame>/reports/discovery.md`
+   - `scans/<reponame>/workflow/discovery-summary.md`
 
    Semantic SAST behavior:
    - Cognium runs when installed: `cognium scan ./src --category security --exclude-tests --format json`.
@@ -149,7 +149,7 @@ Filesystem boundary:
 
    Outputs:
    - `scans/<reponame>/findings/triaged/findings.json`
-   - `scans/<reponame>/reports/triage.md`
+   - `scans/<reponame>/security/triage-report.md`
    - Ghost/native reconciliation fields in triaged findings.
 
 10. Rescore auto-runs after triage to re-evaluate needs-human-review findings.
@@ -163,7 +163,7 @@ Filesystem boundary:
    - Secrets in production code paths are accepted
 
    Outputs:
-   - `scans/<reponame>/reports/human-review-rescore.md`
+   - `scans/<reponame>/review/rescore-report.md`
 
 11. Report produces the operator handoff.
 
@@ -172,9 +172,9 @@ Filesystem boundary:
    ```
 
    Outputs:
-    - `scans/<reponame>/reports/mvp-summary.md`
-    - `scans/<reponame>/reports/detailed-report.md`
-    - `scans/<reponame>/reports/ghost-summary.md`
+    - `scans/<reponame>/security/executive-summary.md`
+    - `scans/<reponame>/security/detailed-report.md`
+    - `scans/<reponame>/security/ghost-findings.md`
 
 ## Agent Context Rules
 
@@ -184,7 +184,7 @@ Agents may read:
 - `evidence/graph/*.json`
 - `findings/normalized/findings.json`
 - `findings/triaged/findings.json`
-- `reports/*.md`
+- `security/*.md`
 
 Agents must not bulk-read:
 - whole source files

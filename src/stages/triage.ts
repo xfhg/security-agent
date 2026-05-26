@@ -77,7 +77,7 @@ function renderTriage(findings: TriagedFinding[], coverage: Awaited<ReturnType<t
   };
 
   const findingDetail = (f: TriagedFinding): string => {
-    const locs = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}-${file.end_line}\``).join(", ") || "unknown";
+    const locs = f.files.map((file) => `\`${repoRelativePath(repo, file.path)}:${file.start_line}-${file.end_line}\``).join(", ") || (f.bug_class === "dependency" ? "N/A (external dependency)" : "unknown");
     const evidenceBlock = f.evidence.map((e) => `  - [${e.kind}] ${e.path ? repoRelativePath(repo, e.path) : ""}${e.line ? `:${e.line}` : ""}: ${e.content.slice(0, 200)}`).join("\n") || "  - none";
     const checks = f.triage.required_human_checks.map((c) => `  - [ ] ${c}`).join("\n");
     const rationale = f.triage.rationale.split("\n").map((r) => `  - ${r}`).join("\n");

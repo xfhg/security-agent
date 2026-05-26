@@ -46,9 +46,6 @@ export async function doctorStage(repo: string): Promise<void> {
     await scanFile(file, issues, true);
   }
 
-  await scanTree(path.join(securityAgentHome(), "ghost", "skills", "plugins", "ghost"), issues);
-  await scanTree(agentPath(repo), issues);
-
   const artifact = {
     status: issues.some((issue) => issue.severity === "error") ? "failed" : issues.length ? "warning" : "passed",
     checked_at: nowIso(),

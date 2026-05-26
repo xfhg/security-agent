@@ -38,8 +38,8 @@ flowchart TD
 
   Init --> InitArtifacts["config/*.json + AHK status + harness task artifacts"]
   GhostRun --> GhostArtifacts["Ghost repo/code/deps/secrets/report artifacts when skills run"]
-  Recon --> ReconArtifacts["kb/*.json + evidence/graph/*.json + reports/recon.md"]
-  Discovery --> DiscoveryArtifacts["findings/raw/*.json + findings/normalized/findings.json + reports/discovery.md"]
+  Recon --> ReconArtifacts["kb/*.json + evidence/graph/*.json + workflow/recon-summary.md"]
+  Discovery --> DiscoveryArtifacts["findings/raw/*.json + findings/normalized/findings.json + workflow/discovery-summary.md"]
   Triage --> TriageArtifacts["findings/triaged/findings.json + security/triage-report.md"]
   Rescore --> RescoreArtifacts["review/rescore-report.md + updated findings/triaged/findings.json"]
   Report --> ReportArtifacts["security/executive-summary.md + security/detailed-report.md + security/ghost-findings.md + review/checklist.md"]
@@ -187,7 +187,7 @@ flowchart TD
   Dataflows --> ThreatModel
   ThreatModel --> ThreatModelMd["kb/threat-model.md"]
 
-  GhostContextArtifact --> ReconReport["reports/recon.md"]
+  GhostContextArtifact --> ReconReport["workflow/recon-summary.md"]
   RepoMap --> ReconReport
   Languages --> ReconReport
   Dependencies --> ReconReport
@@ -233,7 +233,7 @@ Recon artifacts available to later phases:
 - `evidence/graph/gitnexus-analyze.json`
 - `evidence/graph/gitnexus-query.json`
 - `evidence/graph/semble-searches.json`
-- `reports/recon.md`
+- `workflow/recon-summary.md`
 
 ## 5. Discovery Phase
 
@@ -256,7 +256,7 @@ flowchart TD
   RawOpenGrep --> OpenGrepNormalized["normalized OpenGrep findings"]
 
   SemanticAgent --> CogniumDetect["detect Cognium"]
-  CogniumDetect --> CogniumScan["cognium scan ./src --category security --exclude-tests --format json"]
+  CogniumDetect --> CogniumScan["cognium scan ./src --category security --exclude-tests --exclude-cwe CWE-20 --format json"]
   CogniumScan --> RawSemantic["findings/raw/semantic-sast.json"]
 
   SecretsAgent --> RawSecrets["findings/raw/secrets-config.json"]
@@ -285,7 +285,7 @@ flowchart TD
   GhostDeps --> Normalized
   GhostSecrets --> Normalized
 
-  Normalized --> DiscoveryReport["reports/discovery.md"]
+  Normalized --> DiscoveryReport["workflow/discovery-summary.md"]
 ```
 
 Discovery skill/agent usage:
@@ -319,7 +319,7 @@ Discovery artifacts available to triage:
 - `findings/normalized/ghost-code-findings.json`
 - `findings/normalized/ghost-deps-findings.json`
 - `findings/normalized/ghost-secrets-findings.json`
-- `reports/discovery.md`
+- `workflow/discovery-summary.md`
 
 ## 6. Triage Phase
 
@@ -358,7 +358,7 @@ flowchart TD
   Deduped --> GhostRecon
 
   GhostRecon --> Triaged["findings/triaged/findings.json"]
-  Triaged --> TriageReport["reports/triage.md"]
+  Triaged --> TriageReport["security/triage-report.md"]
 ```
 
 Triage skill/agent usage:
@@ -390,7 +390,7 @@ Triage supporting tools:
 Triage artifacts available to decision/report:
 
 - `findings/triaged/findings.json`
-- `reports/triage.md`
+- `security/triage-report.md`
 
 ## 7. Report And Decision Phase
 
@@ -403,30 +403,30 @@ flowchart TD
   LoadTriaged --> Rejected["Rejected findings"]
   LoadTriaged --> TopRisks["Top 5 by priority"]
 
-  Accepted --> Summary["reports/mvp-summary.md"]
+  Accepted --> Summary["security/executive-summary.md"]
   Review --> Summary
   Rejected --> Summary
   TopRisks --> Summary
 
-  LoadTriaged --> DetailedReport["reports/detailed-report.md"]
+  LoadTriaged --> DetailedReport["security/detailed-report.md"]
   Accepted --> DetailedReport
   Review --> DetailedReport
   Rejected --> DetailedReport
 
   LoadTriaged --> GhostSummaryDecision["Ghost summary default"]
-  GhostSummaryDecision --> GhostSummary["reports/ghost-summary.md"]
+  GhostSummaryDecision --> GhostSummary["security/ghost-findings.md"]
 
   Summary --> OperatorDecision["Operator decision: prove later | manual review | rule improvement | ignore"]
 ```
 
 Decision inputs:
 
-- `reports/mvp-summary.md`
-- `reports/detailed-report.md`
-- `reports/triage.md`
+- `security/executive-summary.md`
+- `security/detailed-report.md`
+- `security/triage-report.md`
 - `findings/triaged/findings.json`
-- `reports/discovery.md`
-- `reports/recon.md`
+- `workflow/discovery-summary.md`
+- `workflow/recon-summary.md`
 
 Decision rules:
 
@@ -455,14 +455,14 @@ flowchart LR
 
   Discovery["Discovery"] --> C1["findings/raw/*.json"]
   Discovery --> C2["findings/normalized/findings.json"]
-  Discovery --> C3["reports/discovery.md"]
+  Discovery --> C3["workflow/discovery-summary.md"]
 
   Triage["Triage"] --> D1["findings/triaged/findings.json"]
-  Triage --> D2["reports/triage.md"]
+  Triage --> D2["security/triage-report.md"]
 
-  Rescore["Rescore (auto)"] --> R1["reports/human-review-rescore.md"]
+  Rescore["Rescore (auto)"] --> R1["review/rescore-report.md"]
 
-  Decision["Report / Decision"] --> E1["reports/mvp-summary.md"]
+  Decision["Report / Decision"] --> E1["security/executive-summary.md"]
 
   D1 --> Rescore
   Rescore --> Decision
@@ -489,7 +489,7 @@ flowchart LR
 | Recon | `graph-agent` | fallback lexical graph | `kb/callgraph.json`, `kb/dataflows.json` | reachability triage |
 | Recon | `threat-model-agent` | KB synthesis | `kb/threat-model.md` | triage/report review |
 | Discovery | `opengrep-sast-agent` | `opengrep scan` | `findings/raw/opengrep.json` | normalization, triage |
-| Discovery | `semantic-sast-agent` | `cognium scan ./src --category security --exclude-tests --format json` | `findings/raw/semantic-sast.json` | normalization, triage |
+| Discovery | `semantic-sast-agent` | `cognium scan ./src --category security --exclude-tests --exclude-cwe CWE-20 --format json` | `findings/raw/semantic-sast.json` | normalization, triage |
 | Discovery | focused agents | local heuristics | `findings/raw/*.json` | normalization, triage |
 | Discovery | `ghost-finding-import-agent` default | Ghost import of previously generated scans | `findings/normalized/ghost-*.json` | dedup, reconciliation |
 | Triage | `dedup-agent` | no external tool | deduped in memory | all triage agents |
@@ -499,8 +499,8 @@ flowchart LR
 | Triage | `false-positive-agent` | reads finding paths/evidence | triage fields | severity panel |
 | Triage | `severity-panel-agent` | deterministic vote logic | triage votes/status | report |
 | Triage | `ghost-status-reconciliation-agent` | reads external status | triage ghost notes | report |
-| Rescore (auto) | `rescore-agent` | reads triaged findings + KB artifacts | `reports/human-review-rescore.md`, updated triage scores | report |
-| Report | `report-agent` | reads triaged findings | `reports/mvp-summary.md`, `reports/detailed-report.md`, `reports/ghost-summary.md` | operator decision |
+| Rescore (auto) | `rescore-agent` | reads triaged findings + KB artifacts | `review/rescore-report.md`, updated triage scores | report |
+| Report | `report-agent` | reads triaged findings | `security/executive-summary.md`, `security/detailed-report.md`, `security/ghost-findings.md` | operator decision |
 
 ## 10. Troubleshooting Checkpoints
 
@@ -519,4 +519,4 @@ Use these checkpoints to verify agents are following the workflow:
 11. Discovery should not run before `kb/repo-map.json` exists.
 12. Triage should not run before `findings/normalized/findings.json` exists.
 13. Report should not run before `findings/triaged/findings.json` exists unless `--partial` is explicit.
-14. Rescore auto-triggers after triage in complete pipelines; `reports/human-review-rescore.md` should exist after triage completes.
+14. Rescore auto-triggers after triage in complete pipelines; `review/rescore-report.md` should exist after triage completes.
