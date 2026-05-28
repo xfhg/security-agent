@@ -20,7 +20,7 @@ flowchart TD
   OCConfig --> AgentLead["Default agent: security-agent-lead"]
   OCConfig --> SkillMVP["Skill available: security-agent-mvp"]
   OCConfig --> Commands["Commands available: /security-agent-*"]
-  OCConfig -->   MCPs["MCPs connected: agent-harness-kit, codetree (targets/), filesystem_vulnops, gitnexus, semble, global MCPs"]
+  OCConfig -->   MCPs["MCPs connected: agent-harness-kit, codetree (targets/), filesystem_vulnops, gitnexus, global MCPs"]
 
   AgentLead --> RunCmd["/security-agent-run TARGET_REPO recon,discovery,triage"]
   SkillMVP --> RunCmd
@@ -79,7 +79,6 @@ sequenceDiagram
   Cmd->>CLI: node --experimental-strip-types ./src/cli.ts toolchain verify
   Cmd->>AHK: claim tool-codetree-structure
   Cmd->>AHK: claim tool-gitnexus-recon
-  Cmd->>AHK: claim tool-semble-retrieval
   Cmd->>Ghost: ghost-repo-context TARGET_REPO
   Cmd->>Ghost: ghost-scan-deps TARGET_REPO
   Cmd->>Ghost: ghost-scan-secrets TARGET_REPO
@@ -148,20 +147,11 @@ flowchart TD
   GitNexusAnalyze --> GitNexusQuery["gitnexus query -r alias --goal security entrypoints and flows"]
   GitNexusQuery --> GitNexusQueryArtifact["evidence/graph/gitnexus-query.json"]
 
-  ToolPrep --> SembleDetect["detect contained Semble"]
-  SembleDetect --> SembleSearch1["semble search: entrypoints routes handlers controllers"]
-  SembleDetect --> SembleSearch2["semble search: auth authorization middleware policies ownership tenant"]
-  SembleDetect --> SembleSearch3["semble search: database shell file crypto secret config"]
-  SembleSearch1 --> SembleArtifact["evidence/graph/semble-searches.json"]
-  SembleSearch2 --> SembleArtifact
-  SembleSearch3 --> SembleArtifact
-
   ToolPrep --> CodeTreeDetect["detect codeTree CLI fallback"]
   CodeTreeDetect --> CodeTreeRecord["record unavailable if MCP/CLI structure unavailable"]
 
   GitNexusAnalyzeArtifact --> SupportingTools["kb/supporting-tools.json"]
   GitNexusQueryArtifact --> SupportingTools
-  SembleArtifact --> SupportingTools
   CodeTreeMCP --> SupportingTools
   CodeTreeMCP --> CodeTreeArtifact["evidence/graph/codetree-structure.json or blocker"]
   CodeTreeMCP --> CodeTreeSymbols["evidence/graph/codetree-security-symbols.json"]
@@ -214,8 +204,7 @@ Recon skill/agent usage:
 
 Recon supporting tools:
 
-- GitNexus: graph/index and security-focused query evidence
-- Semble: local retrieval searches
+- GitNexus: graph/index and security-focused query evidence. Retries with `--skip-git` on non-git-repo error.
 - codeTree: MCP-first structural context for symbols/functions/classes/imports/routes, plus security symbol scans, entrypoint skeletons, hot-path analysis, and dead/clone detection scoped to `TARGET_REPO`; CLI detection remains fallback. Session MCP (scoped to `targets/`) usable for deep-dive with `<reponame>/` path prefix.
 - Ghost: active safe skills run before recon in `/security-agent-run`; recon imports their context artifacts
 - RTK: operator-facing command-output reduction, not part of internal CLI execution
@@ -240,7 +229,6 @@ Recon artifacts available to later phases:
 - `evidence/graph/codetree-graph-context.json`
 - `evidence/graph/gitnexus-analyze.json`
 - `evidence/graph/gitnexus-query.json`
-- `evidence/graph/semble-searches.json`
 - `workflow/recon-summary.md`
 
 ## 5. Discovery Phase
@@ -395,7 +383,6 @@ Triage supporting tools:
   - `evidence/graph/codetree-skeletons.json`
   - `evidence/graph/codetree-hot-paths.json`
   - `evidence/graph/gitnexus-query.json`
-  - `evidence/graph/semble-searches.json`
   - `findings/normalized/findings.json`
 
 Triage artifacts available to decision/report:
@@ -467,7 +454,6 @@ flowchart LR
   Recon --> B11["evidence/graph/codetree-hot-paths.json"]
   Recon --> B12["evidence/graph/codetree-graph-context.json"]
   Recon --> B13["evidence/graph/gitnexus-query.json"]
-  Recon --> B14["evidence/graph/semble-searches.json"]
 
   Discovery["Discovery"] --> C1["findings/raw/*.json"]
   Discovery --> C2["findings/normalized/findings.json"]
@@ -491,13 +477,12 @@ flowchart LR
 | --- | --- | --- | --- | --- |
 | OpenCode startup | `security-agent-lead`, `security-agent-mvp` | OpenCode config loader | resolved config | all commands |
 | OpenCode command | `security-agent-lead`, `security-agent-mvp` | `agent-harness-kit` MCP: `tasks.get`, `tasks.claim`, `actions.start/write/complete`, `tasks.update` | AHK SQLite state and `.harness/current.md` | task ownership, audit |
-| External tool gate | harness task | codeTree, GitNexus, Semble, Ghost, OpenGrep, Cognium | tool artifact or blocker artifact | prevents skipped intermediary scans |
+| External tool gate | harness task | codeTree, GitNexus, Ghost, OpenGrep, Cognium | tool artifact or blocker artifact | prevents skipped intermediary scans |
 | Init | `security-agent-mvp` | filesystem, git commit lookup, AHK SQLite | `config/*.json`, `.harness/harness.db`, `evidence/agent-harness-kit.json` | recon, all phases |
 | Init | harness adapter | sequential `bins/shims/ahk sync --direction in`, `bins/shims/ahk status --json` | `evidence/agent-harness-kit.json` | operator audit |
 | Pre-recon/pre-discovery | safe Ghost skills | `ghost-repo-context`, `ghost-scan-deps`, `ghost-scan-secrets`, `ghost-scan-code`, `ghost-report` | Ghost cache/artifacts, later canonical imports | recon, discovery, report |
-| Recon prep | graph/recon tools | `gitnexus analyze` | `evidence/graph/gitnexus-analyze.json` | recon, triage context |
+| Recon prep | graph/recon tools | `gitnexus analyze` (retries with --skip-git) | `evidence/graph/gitnexus-analyze.json` | recon, triage context |
 | Recon prep | graph/recon tools | `gitnexus query` | `evidence/graph/gitnexus-query.json` | recon, triage context |
-| Recon prep | graph/recon tools | `bins/shims/semble search` | `evidence/graph/semble-searches.json` | recon, discovery, triage context |
 | Recon prep | graph/recon tools | codeTree MCP JSON-RPC: repo-map, search_graph, security symbols, entrypoint skeletons, hot paths, dead code, clones | `evidence/graph/codetree-structure.json`, `evidence/graph/codetree-security-symbols.json`, `evidence/graph/codetree-skeletons.json`, `evidence/graph/codetree-hot-paths.json`, `evidence/graph/codetree-graph-context.json`, `kb/supporting-tools.json` | recon, discovery, triage context |
 | Recon | `repo-cartographer-agent` | filesystem scan | `kb/repo-map.json`, `kb/languages.json` | discovery, triage |
 | Recon | `dependency-agent` | manifest parsing | `kb/dependencies.json` | dependency-risk discovery |
@@ -531,8 +516,7 @@ Use these checkpoints to verify agents are following the workflow:
 7. `scans/<reponame>/evidence/agent-harness-kit.json` should record AHK sync/status.
 8. `scans/<reponame>/kb/supporting-tools.json` should exist after recon.
 9. `scans/<reponame>/evidence/graph/gitnexus-query.json` should exist after recon when GitNexus responds.
-10. `scans/<reponame>/evidence/graph/semble-searches.json` should exist after recon when Semble responds.
-11. Discovery should not run before `kb/repo-map.json` exists.
-12. Triage should not run before `findings/normalized/findings.json` exists.
-13. Report should not run before `findings/triaged/findings.json` exists unless `--partial` is explicit.
-14. Rescore auto-triggers after triage in complete pipelines; `review/rescore-report.md` should exist after triage completes.
+10. Discovery should not run before `kb/repo-map.json` exists.
+11. Triage should not run before `findings/normalized/findings.json` exists.
+12. Report should not run before `findings/triaged/findings.json` exists unless `--partial` is explicit.
+13. Rescore auto-triggers after triage in complete pipelines; `review/rescore-report.md` should exist after triage completes.

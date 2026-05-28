@@ -6,8 +6,4 @@
 ## No tasks in progress
 
 ### Next pending tasks
-- **#2** Run Ghost repo context against target (`ghost-repo-context`)
-- **#4** Run Ghost discovery scans against target (`ghost-discovery-scans`)
-- **#8** Run codeTree structural analysis (`tool-codetree-structure`)
-- **#9** Run GitNexus recon graph analysis (`tool-gitnexus-recon`)
-- **#10** Run Semble targeted retrieval (`tool-semble-retrieval`)
+

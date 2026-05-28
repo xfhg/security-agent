@@ -44,7 +44,7 @@ Filesystem boundary:
    - AHK root tasks are seeded from the workflow contract and `.harness/feature_list.json` with `bins/shims/ahk sync --direction in`.
    - AHK CLI validation must run sequentially; do not run `ahk sync` and `ahk status` in parallel against the same SQLite DB.
    - Operator chat is not outside the process: target workflow requests must use the harness before work starts.
-   - External tools are tracked as individual harness gates: codeTree, GitNexus, Semble, Ghost, OpenGrep, and Cognium.
+    - External tools are tracked as individual harness gates: codeTree, GitNexus, Ghost, OpenGrep, and Cognium.
    - Acceptance criteria must be marked met before task completion; `done` with unmet acceptance is downgraded to `blocked`.
 
 3. Containment doctor runs before external evidence is trusted.
@@ -66,12 +66,12 @@ Filesystem boundary:
 
 5. Safe Ghost workflows run against the target before native import.
 
-   OpenCode skill calls:
-   - `ghost-repo-context`
-   - `ghost-scan-deps`
-   - `ghost-scan-secrets`
-   - `ghost-scan-code`
-   - `ghost-report`
+    Ghost skills are OpenCode skills invoked via `skill("ghost-repo-context")`, NOT CLI binaries:
+    - `ghost-repo-context`
+    - `ghost-scan-deps`
+    - `ghost-scan-secrets`
+    - `ghost-scan-code`
+    - `ghost-report`
 
    Forbidden:
    - `ghost-validate`
@@ -90,22 +90,19 @@ Filesystem boundary:
     Supporting tool behavior:
      - codeTree is started by the CLI recon stage with `--root TARGET_REPO` and writes baseline structure, security symbol scans, entrypoint skeletons, hot-path analysis, and dead/clone detection under `evidence/graph/`. The session codetree MCP (scoped to `targets/`) can also be used for deep-dive queries on specific symbols/files during discovery and triage, with the `<reponame>/` path prefix.
      - GitNexus indexes the target and runs a security-focused graph query.
-    - Semble runs focused retrieval searches for entrypoints, authz, data access, shell/file/crypto/secret surfaces.
-    - CLI codeTree detection remains a fallback artifact when MCP structure is unavailable.
+     - CLI codeTree detection remains a fallback artifact when MCP structure is unavailable.
     - Supporting tools are time-budgeted, but complete scans require gate success before this phase.
     - Ghost repo context generated in the prior OpenCode step is imported by default.
 
    Harness-gated intermediary artifacts:
-   - codeTree: `scans/<reponame>/evidence/graph/codetree-structure.json` or blocker.
-   - GitNexus: `scans/<reponame>/evidence/graph/gitnexus-analyze.json` and `gitnexus-query.json` or blocker.
-   - Semble: `scans/<reponame>/evidence/graph/semble-searches.json` or blocker.
+    - codeTree: `scans/<reponame>/evidence/graph/codetree-structure.json` or blocker.
+    - GitNexus: `scans/<reponame>/evidence/graph/gitnexus-analyze.json` and `gitnexus-query.json` or blocker.
 
-   Outputs:
-    - `scans/<reponame>/kb/supporting-tools.json`
-    - `scans/<reponame>/evidence/graph/gitnexus-analyze.json`
-    - `scans/<reponame>/evidence/graph/gitnexus-query.json`
-    - `scans/<reponame>/evidence/graph/semble-searches.json`
-    - `scans/<reponame>/evidence/graph/codetree-structure.json`
+    Outputs:
+     - `scans/<reponame>/kb/supporting-tools.json`
+     - `scans/<reponame>/evidence/graph/gitnexus-analyze.json`
+     - `scans/<reponame>/evidence/graph/gitnexus-query.json`
+     - `scans/<reponame>/evidence/graph/codetree-structure.json`
     - `scans/<reponame>/evidence/graph/codetree-security-symbols.json`
     - `scans/<reponame>/evidence/graph/codetree-skeletons.json`
     - `scans/<reponame>/evidence/graph/codetree-hot-paths.json`
@@ -188,7 +185,7 @@ Filesystem boundary:
 Agents may read:
 - `config/target.json`
 - `kb/*.json`
-- `evidence/graph/*.json` (codetree structure, security symbols, skeletons, hot paths; gitnexus; semble)
+- `evidence/graph/*.json` (codetree structure, security symbols, skeletons, hot paths; gitnexus)
 - `findings/normalized/findings.json`
 - `findings/triaged/findings.json`
 - `security/*.md`

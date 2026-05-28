@@ -18,7 +18,49 @@ platform_excludes() {
   for p in $SKIP; do
     echo "--exclude=$DIRNAME/bins/opencode/$p"
     echo "--exclude=$DIRNAME/bins/ghost/$p"
+    echo "--exclude=$DIRNAME/bins/ghost/${p//-/_}"
   done
+  # Also exclude underscore variant of the current platform (duplicate bins dir)
+  echo "--exclude=$DIRNAME/bins/opencode/${PLATFORM//-/_}"
+  echo "--exclude=$DIRNAME/bins/ghost/${PLATFORM//-/_}"
+}
+
+prune_node_native_binaries() {
+  local nm="$ROOT/node_modules"
+
+  echo "Pruning non-$PLATFORM native binaries from node_modules..."
+
+  # onnxruntime cross-platform natives
+  find "$nm" -path "*/napi-v6/darwin"     -exec rm -rf {} + 2>/dev/null || true
+  find "$nm" -path "*/napi-v6/win32"      -exec rm -rf {} + 2>/dev/null || true
+  find "$nm" -path "*/napi-v6/linux/arm64" -exec rm -rf {} + 2>/dev/null || true
+
+  # CUDA provider (not needed on CPU-only offline servers)
+  find "$nm" -path "*/napi-v6/linux/x64/*cuda*" -delete 2>/dev/null || true
+
+  # onnxruntime-web is browser-only — remove entire package
+  find "$nm" -path "*/onnxruntime-web" -prune -exec rm -rf {} + 2>/dev/null || true
+
+  # tree-sitter cross-platform prebuilds
+  find "$nm" -path "*/prebuilds/darwin-*"       -exec rm -rf {} + 2>/dev/null || true
+  find "$nm" -path "*/prebuilds/win32-*"        -exec rm -rf {} + 2>/dev/null || true
+  find "$nm" -path "*/prebuilds/linux-arm64"    -exec rm -rf {} + 2>/dev/null || true
+  find "$nm" -name "*.wasm" -delete 2>/dev/null || true
+
+  # tree-sitter parser.c source files (only needed at build time; prebuilds suffice at runtime)
+  find "$nm" -path "*/tree-sitter-*/src/parser.c" -delete 2>/dev/null || true
+  find "$nm" -path "*/vendor/tree-sitter-*/src/parser.c" -delete 2>/dev/null || true
+
+  # sharp musl variant (keep glibc for linux-amd64)
+  find "$nm" -path "*sharp-libvips-linuxmusl*" -exec rm -rf {} + 2>/dev/null || true
+
+  # Windows-specific onnxruntime DLLs
+  find "$nm" \( -name "DirectML.dll" -o -name "dxcompiler.dll" -o -name "onnxruntime.dll" -o -name "onnxruntime_providers_shared.dll" \) -delete 2>/dev/null || true
+
+  # macOS-specific onnxruntime dylibs (top-level too, not just napi-v6/darwin)
+  find "$nm" -name "*.dylib" -delete 2>/dev/null || true
+
+  echo "  done pruning."
 }
 
 build() {
@@ -29,8 +71,10 @@ build() {
   if [ "$offline" = "0" ]; then
     extra="--exclude=$DIRNAME/node_modules --exclude=$DIRNAME/.opencode/node_modules --exclude=$DIRNAME/.local"
   else
+    prune_node_native_binaries
     extra="--exclude=$DIRNAME/node_modules/.cache --exclude=$DIRNAME/.opencode/node_modules"
     extra="$extra --exclude=$DIRNAME/.local/cache --exclude=$DIRNAME/.local/home --exclude=$DIRNAME/.local/share --exclude=$DIRNAME/.local/state --exclude=$DIRNAME/.local/toolchain"
+    extra="$extra --exclude=$DIRNAME/.local/osv-cache"
   fi
 
   rm -f "$name"
@@ -40,6 +84,7 @@ build() {
     --exclude='._*' \
     --exclude='.DS_Store' \
     --exclude="$DIRNAME/.git" \
+    --exclude='**/.git' \
     --exclude="$DIRNAME/scans" \
     --exclude="$DIRNAME/targets" \
     --exclude="$DIRNAME/.codetree" \

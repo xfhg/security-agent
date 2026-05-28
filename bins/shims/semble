@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 PY="$(ls -1d "$ROOT"/.local/python/cpython-*/bin/python3.12 2>/dev/null | head -1 || echo "")"
-if [ -z "$PY" ] || [ ! -x "$PY" ]; then echo "contained semble runtime missing under $ROOT/.local/python/ (run: uv toolchain bootstrap)" >&2; exit 127; fi
+if [ -z "$PY" ] || [ ! -x "$PY" ]; then
+  PY="$(command -v python3.12 2>/dev/null || echo "")"
+  if [ -z "$PY" ]; then
+    PY="$(command -v python3 2>/dev/null || echo "")"
+  fi
+fi
+if [ -z "$PY" ] || [ ! -x "$PY" ]; then
+  echo "contained semble runtime missing under $ROOT/.local/python/ and no system python3 found (run: uv toolchain bootstrap)" >&2
+  exit 127
+fi
+
 SITE="$ROOT/.local/venvs/semble/lib/python3.12/site-packages"
 if [ ! -d "$SITE/semble" ]; then echo "contained semble package missing under $SITE (run: uv sync)" >&2; exit 127; fi
 export SECURITY_AGENT_HOME="${SECURITY_AGENT_HOME:-$ROOT}"

@@ -25,7 +25,7 @@ Inside OpenCode:
 ## Pipeline
 
 ```
-init → doctor → recon → discovery → triage → rescore → report
+init → doctor (selfcheck) → recon → discovery → triage → rescore → report
 ```
 
 | Stage | What it does | Tools |
@@ -36,7 +36,7 @@ init → doctor → recon → discovery → triage → rescore → report
 | `rescore` | Re-evaluate needs-human-review with full KB context + graph-confirmed decisions | Ghost evidence, codetree hot-paths, skeletons, security symbols |
 | `report` | Executive summary, detailed findings, review checklist | — |
 
-Ghost skills (`ghost-repo-context`, `ghost-scan-deps`, `ghost-scan-secrets`, `ghost-scan-code`, `ghost-report`) run before discovery by default. Each skill receives the explicit `TARGET_REPO` path and writes output directly to `scans/<reponame>/evidence/ghost/`. Ghost scan-code may skip when native OpenGrep + Cognium SAST both provide coverage. Semble is available as an MCP tool for targeted semantic retrieval.
+
 
 ## Output
 
@@ -64,7 +64,7 @@ The entire pipeline runs without network access after a one-time bootstrap. See 
 
 ## Next steps
 
-Integrate Strix and Buttercup
+Integrate Strix, Buttercup and Bumblebee
 
 ## v2 Roadmap
 

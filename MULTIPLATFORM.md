@@ -41,7 +41,7 @@ bash scripts/bootstrap.sh
 npm install
 cd .opencode && npm install && cd ..
 
-# 4. Bootstrap Python runtimes for codetree + semble
+# 4. Bootstrap Python runtimes for codetree
 uv install 2>/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 uv venv .local/python/cpython-py312 --python 3.12 --seed
 ln -sf python3 .local/python/cpython-py312/bin/python3.12
@@ -49,10 +49,6 @@ ln -sf python3 .local/python/cpython-py312/bin/python3.12
 .local/python/cpython-py312/bin/pip install mcp-server-codetree
 mkdir -p .local/venvs/codetree/lib/python3.12/site-packages
 cp -r .local/python/cpython-py312/lib/python3.12/site-packages/codetree .local/venvs/codetree/lib/python3.12/site-packages/
-
-.local/python/cpython-py312/bin/pip install semble
-mkdir -p .local/venvs/semble/lib/python3.12/site-packages
-cp -r .local/python/cpython-py312/lib/python3.12/site-packages/semble .local/venvs/semble/lib/python3.12/site-packages/
 
 # 5. Pre-download OSV vulnerability DB for offline SCA
 bash scripts/offline-bootstrap.sh
@@ -100,7 +96,7 @@ Inside OpenCode:
 /security-agent-run targets/<reponame> recon,discovery,triage
 ```
 
-> **Note**: The offline tarball includes pre-built `node_modules/`, Python venvs for codetree + semble, and the opengrep binary. The only remaining online dependency is the initial `git clone` of the target repo and the one-time `scripts/offline-bootstrap.sh` to download the OSV vulnerability database.
+> **Note**: The offline tarball includes pre-built `node_modules/`, Python venvs for codetree, the opengrep binary, and the OSV vulnerability database. The only remaining online dependency is the initial `git clone` of the target repo.
 
 ---
 
@@ -135,10 +131,6 @@ ln -sf python3 .local/python/cpython-py312/bin/python3.12
 .local/python/cpython-py312/bin/pip install mcp-server-codetree
 mkdir -p .local/venvs/codetree/lib/python3.12/site-packages
 cp -r .local/python/cpython-py312/lib/python3.12/site-packages/codetree .local/venvs/codetree/lib/python3.12/site-packages/
-
-.local/python/cpython-py312/bin/pip install semble
-mkdir -p .local/venvs/semble/lib/python3.12/site-packages
-cp -r .local/python/cpython-py312/lib/python3.12/site-packages/semble .local/venvs/semble/lib/python3.12/site-packages/
 
 # 5. Verify toolchain
 node --experimental-strip-types ./src/cli.ts toolchain verify
@@ -180,7 +172,6 @@ Operational logs are under `scans/<reponame>/workflow/`. Evidence and raw tool o
 | OpenGrep (SAST) | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes |
 | GitNexus (graph) | npm package | npm package | yes |
 | codetree (structure) | Python venv | Python venv | yes |
-| semble (retrieval) | Python venv | Python venv | yes |
 | wraith (SCA) | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes (with pre-downloaded DB) |
 | osv-scanner (SCA) | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes (with pre-downloaded DB) |
 | poltergeist (secrets) | `scripts/bootstrap.sh` | `scripts/bootstrap.sh` | yes |

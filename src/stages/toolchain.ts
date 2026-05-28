@@ -46,7 +46,7 @@ export async function bundleToolchain(): Promise<{ path: string; lock: any; exit
   const outDir = localPath("toolchain");
   await mkdir(outDir, { recursive: true });
   const outPath = path.join(outDir, `vulnops-toolchain-${platformArch()}-${Date.now()}.tar.gz`);
-  const result = await runTar(["-czf", outPath, "--exclude=.opencode/node_modules", "--exclude=node_modules", "--exclude=.local/cache", "--exclude=.local/toolchain", "--exclude=targets/*", "bins", "ghost", ".opencode", ".local/venvs", ".local/python", "targets", "src", "docs", "config", "opencode.jsonc", "AGENTS.md", "OPERATIONMANUAL.md", "package.json", "package-lock.json", "agent-harness-kit.config.ts", "toolchain.lock.json"]);
+  const result = await runTar(["-czf", outPath, "--exclude=._*", "--exclude=.DS_Store", "--exclude=.git", "--exclude=**/.git", "--exclude=.opencode/node_modules", "--exclude=node_modules", "--exclude=.codetree", "--exclude=.harness/harness.db*", "--exclude=*.db-wal", "--exclude=*.db-shm", "--exclude=.local/cache", "--exclude=.local/toolchain", "bins", "ghost", ".opencode", ".local/venvs", ".local/python", "src", "docs", "config", "opencode.jsonc", "AGENTS.md", "OPERATIONMANUAL.md", "package.json", "package-lock.json", "agent-harness-kit.config.ts", "toolchain.lock.json"]);
   await writeFile(path.join(outDir, "last-bundle.json"), JSON.stringify({ path: outPath, exit_code: result.code, stderr: result.stderr, generated_at: nowIso() }, null, 2), "utf8");
   return { path: outPath, lock, exit_code: result.code, stderr: result.stderr };
 }
